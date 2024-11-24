@@ -1,4 +1,3 @@
-/*************  ✨ Codeium Command 🌟  *************/
 # SoundPlus
 
 <p align="center">
@@ -65,4 +64,3 @@ Este proyecto, SoundPlus, es una aplicación de música en línea desarrollada c
 SoundPlus está licenciado bajo la licencia MIT. Ver <code>LICENSE</code> para más información.
 
 
-/******  d1af426b-1770-427f-8960-83406bd2fcb6  *******/
