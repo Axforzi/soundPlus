@@ -25,7 +25,7 @@ SoundPlus es una aplicación web de música en línea desarrollada con Django in
 <h2>Instalación y configuración</h2>
 
 <ol>
-  <li>Clona el repositorio de GitHub: <code>git clone https://github.com/axforzi/soundplus.git</code></li>
+  <li>Clona el repositorio de GitHub: <code>git clone https://github.com/Axforzi/soundPlus.git</code></li>
 
   <li>Crea un entorno virtual con Python 3.x: <code>python3 -m venv env</code></li>
 
