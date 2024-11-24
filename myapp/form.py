@@ -51,7 +51,6 @@ class FormSignup(UserCreationForm):
     
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
-        print(self.fields['password2'].error_messages)
 
     class Meta:
         model = User

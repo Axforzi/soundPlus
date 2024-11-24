@@ -6,10 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{% static 'css/main.css' %}">
     <link rel="stylesheet" href="{% static 'css/signup.css' %}">
+    <link rel="shortcut icon" href="{% static 'img/favicon.ico' %}" type="image/x-icon">
+
     <title>Registrarse</title>
 </head>
 <body>
-    <h2>Logo</h2>
+    <h2><img src="{% static 'img/logo.png' %}" alt="logo"></h2>
     <h1>Regístrate para empezar a escuchar contenido</h1>
     <form method="POST" autocomplete="off" class="signup-form">
         {% csrf_token %}

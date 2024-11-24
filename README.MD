@@ -1,3 +1,4 @@
+/*************  ✨ Codeium Command 🌟  *************/
 # SoundPlus
 
 <p align="center">
@@ -36,9 +37,8 @@ SoundPlus es una aplicación web de música en línea desarrollada con Django in
   <li>Configura la variable de entorno <code>SECRET_KEY</code> con una clave secreta alfanumérica aleatoria de al menos 50 caracteres
   </li>
 
-  <li>Configura la base de datos en <code>soundplus/settings.py</code></li>
-
-  <li>Ejecuta las migraciones de la base de datos: <code>python manage.py migrate</code></li>
+  <li>Configura la variable de entorno <code>DEBUG</code> como <code>True</code> o <code>False</code> para activar o desactivar el modo de depuración
+  </li>
 
   <li>Inicia el servidor de desarrollo: <code>python manage.py runserver</code></li>
 </ol>
@@ -64,3 +64,5 @@ Este proyecto, SoundPlus, es una aplicación de música en línea desarrollada c
 
 SoundPlus está licenciado bajo la licencia MIT. Ver <code>LICENSE</code> para más información.
 
+
+/******  d1af426b-1770-427f-8960-83406bd2fcb6  *******/
