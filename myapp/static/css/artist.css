@@ -1,0 +1,704 @@
+/* ARTIST */
+.content{
+    flex-direction: column;
+    /* transform: translateZ(0);    */
+}
+
+.title{
+    display: flex;
+    position: relative;
+    align-items: center;
+    transform: translateZ(0);
+
+    h1{
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        font-size: 5rem;
+        font-weight: 900;
+        z-index: 2;
+
+        .info{
+            font-weight: 600;
+            font-size: .8rem;
+        }
+    }
+    img{
+        width: 100%;
+        position: fixed;
+        z-index: 1;
+    }
+    .container-info{
+        display: flex;
+        align-items: center;
+        z-index: 10;
+        padding: 40px 20px;
+        gap: 25px;
+    }
+    .profile-img{
+        display: flex;
+        aspect-ratio: 1 / 1;
+        position: static;
+        height: 120px;
+        border-radius: 100%;
+        width: auto;
+        z-index: 10;
+    }
+
+    .icon-user{
+        opacity: 0;
+    }
+}
+.title::before{
+    content: '';
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(185deg ,rgba(0, 0, 0, 0), rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.877));
+    top: 0;
+    z-index: 2;
+}
+
+.artist{
+    display: flex;
+    align-items: center;
+    position: relative;
+    flex-direction: column;
+    background: var(--color-black2);
+    z-index: 10;
+    min-height: calc(100vh - 282px);
+
+    .img-background{
+        display: flex;
+        position: absolute;
+        overflow: hidden;
+        height: 500px;
+        align-items: center;
+        z-index: -10;
+        pointer-events: none;
+
+        img{
+            width: 100%;
+            margin-bottom: 700px;
+            filter: blur(100px);
+        }
+    }
+}
+
+.artist.htmx-swapping{
+    opacity: 0;
+    transition: opacity .2s ease;
+}
+.artist.htmx-added{
+    opacity: 1;
+    transition: opacity .2s ease;
+}
+
+main .content .artist, main .content .album{
+    .btns-container{
+        display: flex;
+        width: 100%;
+        gap: 20px;
+        align-items: center;
+        padding: 20px 20px;
+        z-index: 15;
+    
+        .btn-follow{
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: none;
+            padding: 6px 12px;
+            border: 1px rgba(255, 255, 255, 0.432) solid;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: .4s all ease;
+        }
+        .btn-follow:hover{
+            transform: scale(1.1);
+            border-color: white;
+            transition: .4s all ease;
+        }
+    }
+    
+    .popular-songs{
+        display: flex;
+        width: 100%;
+        flex-direction: column;
+        align-items: center;
+        padding-bottom: 10px;
+        gap: 20px;
+        z-index: 15;
+    
+        h2{
+            width: 95%;
+        }
+    }
+    
+    /* TABLE CONFIG */
+    .songs{
+        width: 95%;
+        border-collapse: collapse;
+    
+        td{
+            transition: .1s all ease;
+        }
+        th:nth-child(5){
+            text-align: start;
+            padding: 0;
+
+            span{
+                font-size: 17px;
+                font-weight: bold;
+            }
+        }
+
+        td:nth-child(1){
+            text-align: start;
+            padding-left: 20px;
+            padding-right: 14px;
+        }
+    
+        .song:hover{
+            td{
+                background: rgba(255, 255, 255, 0.103);
+                transition: .3s background ease;
+            }
+            td:nth-child(1){
+                border-top-left-radius: var(--radius);
+                border-bottom-left-radius: var(--radius);
+                background: rgba(255, 255, 255, 0.103);
+                transition: .3s background ease;
+            }
+            td:nth-last-child(1){
+                border-bottom-right-radius: var(--radius);
+                border-top-right-radius: var(--radius);
+                background: rgba(255, 255, 255, 0.103);
+                transition: .3s background ease;
+            }
+            .add .add-library{
+                opacity: 1;
+                transition: .1s opacity ease;
+            }
+    
+            .play div{
+                color: #00000000;
+                transition: .1s color ease;
+            }
+            .play div::before{
+                color: rgb(255, 255, 255);
+                transition: .5s color ease;
+            }
+        }
+    
+        .play div{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            cursor: default;
+            text-align: center;
+            background: none;
+        }
+        .play div::before{
+            font-family: "Material Symbols Outlined";
+            content: '\e037';
+            font-variation-settings: 'FILL' 1;
+            font-size: 20px;
+            display: flex;
+            position: absolute;
+            background: none;
+            cursor: pointer;
+            color: rgba(255, 255, 255, 0);
+        }
+    
+        .img{
+            width: 6%;
+            text-align: center;
+            vertical-align: center;
+    
+            .container-img{
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 5px 0;
+            }
+        }
+        .img img{
+            border-radius: 10px;
+            overflow: hidden;
+            height: 45px;
+        }
+        .title-song{
+            width: 50%;
+    
+            span{
+                display: none;
+            }
+        }
+        .views{
+            text-align: end;
+        }
+        .duration{
+            width: 15%;
+            text-align: start;
+            padding-left: 20px;
+        }
+    
+        .title-song, .views, .duration{
+            cursor: default;
+            font-size: 15px;
+            font-weight: 500;
+        }
+    
+        .add{
+            text-align: end;
+            width: 20%;
+        }
+
+        .add .add-library.added{
+            opacity: 1;
+        }
+        .add .add-library.added span{
+            color: var(--color-green);
+            animation: likedIn .3s forwards;
+        }
+
+        .add .add-library{
+            opacity: 0;
+            padding: 5px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 15px;
+            transition: .1s all ease;
+    
+            span{
+                font-size: 1.2rem;
+                padding-top: 5px;
+                color: rgba(255, 255, 255, 0.74);
+                transition: .4s all ease;
+                animation: likedOut .3s forwards;
+
+            }
+        }
+        .add .add-library:hover span{
+            color: rgb(255, 255, 255);
+            transition: .4s all ease;
+        }
+        .add .add-library.added:hover span{
+            color: var(--color-green);
+            transition: .4s all ease;
+        }
+    
+        .more{
+            position: relative;
+            width: 10%;
+        }
+        .more button{
+            display: flex;
+            align-content: center;
+            align-items: center;
+            background: none;
+            border: none;
+            font-weight: 300;
+            cursor: pointer;
+
+            span{
+                font-weight: 300;
+            }
+        }
+        
+        .more .context{
+            display: flex;
+            flex-direction: column;
+            bottom: 50%;
+            right: 90%;
+            width: 180px;
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+            background: var(--color-black);
+            padding: 5px 5px;
+            border-radius: var(--radius);
+            z-index: 10;
+            transform: translateY(20px);
+            transition: opacity .2s ease, transform .2s ease;
+
+            .add-list{
+                display: flex;
+                align-items: center;
+                position: relative;
+            }
+            .add-list .lists{
+                display: flex;
+                opacity: 0;
+                pointer-events: none;
+                flex-direction: column;
+                position: absolute;
+                right: calc(100% + 10px);
+                top: 0;
+                max-height: 400%;
+                overflow: auto;
+                border-radius: var(--radius);
+                padding: 5px;
+                width: 150px;
+                cursor: default;
+                background: var(--color-black);
+                transition: opacity .3s ease;
+
+                button{
+                    .name{
+                        text-wrap: nowrap;
+                        text-overflow: ellipsis;
+                        overflow: hidden;
+                    }
+                }
+
+                .no-list{
+                    padding: 5px;
+                }
+            }
+            .add-list:hover .lists{
+                opacity: 1;
+                pointer-events: unset;
+            }
+            .add-list::before{
+                content: '';
+                height: 40px;
+                width: 20px;
+                position: absolute;
+                right: 100%;
+            }
+            .add-list::after{
+                font-family: 'Material Symbols Outlined';
+                content: '\e5cc';
+                position: absolute;
+                display: flex;
+                align-items: center;
+                font-size: 1rem;
+                height: 10px;
+                width: 10px;
+                left: 85%;
+                transition: transform .3s ease, margin-bottom .3s ease;
+            }
+            .add-list:hover::after{
+                margin-bottom: 3px;
+                transform: rotate(90deg);
+            }
+
+            button, .add-list{
+                font-size: .8rem;
+                cursor: pointer;
+                padding: 10px;
+                border-radius: var(--radius);
+                gap: 5px;
+                margin: 0;
+            }
+            button:hover, .add-list:hover{
+                background: rgba(255, 255, 255, 0.164);
+            }
+            .add-queue{
+                display: none;
+            }
+        }
+        .more .context.show-context{
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: unset;
+        }
+    }
+    
+    /* ALBUMS MUSICS  */
+    section{
+        width: 100%;
+        padding: 20px 20px 20px 10px;
+    
+        h2{
+            text-indent: 15px;
+        }
+    
+        .body-cards{
+            display: flex;
+            grid-template-columns: auto;
+            justify-content: start;
+            padding: 0 10px;
+            padding-top: 15px;
+            
+            h4{
+                text-align: center;
+                margin: 20px 50px;
+                text-wrap: wrap;
+                width: 100%;
+            }
+        }
+    }
+    
+    .card{
+        align-items: center;
+        justify-content: center;
+        padding: 10px 10px;
+    
+        img{
+            aspect-ratio: 1/1;
+            border-radius: 5px;
+            height: 100%;
+            max-height: 170px;
+        }
+    }
+}
+
+.artist .more .context{
+    right: 104% !important;
+}
+
+@keyframes likedIn {
+    0%{
+        font-variation-settings: 'FILL' 0;
+        transform: scale(1);
+    }
+    20%{
+        font-variation-settings: 'FILL' 0.2;
+        transform: scale(1.2);
+    }
+    100%{
+        font-variation-settings: 'FILL' 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes likedOut {
+    0%{
+        font-variation-settings: 'FILL' 1;
+        transform: scale(1);
+    }
+    20%{
+        font-variation-settings: 'FILL' 0.8;
+        transform: scale(1.2);
+    }
+    100%{
+        font-variation-settings: 'FILL' 0;
+        transform: scale(1);
+    }
+}
+
+
+/* MODAL MORE */
+.artist-more{
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    position: fixed;
+    z-index: 300;
+    top:0;
+    left: 0;
+    height: 100vh;
+    width: 100vw;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.575);
+    backdrop-filter: blur(10px);
+    gap: 15px;
+    padding: 30px;
+    opacity: 0;
+    pointer-events: none;
+    transition: .4s opacity ease;
+
+    .header{
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: auto;
+        margin-bottom: 20px;
+
+        p{
+            display: flex;
+            font-size: 25px;
+            font-weight: 600;
+            flex-direction: column;
+        }
+        span{
+            font-size: 15px;
+            font-weight: 400;
+        }
+    }
+    .song-img{
+        height: 50px;
+        border-radius: 10px;
+    }
+
+    .btn-container{
+        display: flex;
+        flex-direction: column;
+        align-items: start;
+        gap: 20px;
+    }
+
+    button{
+        border: none;
+        background: none;
+        font-size: 20px;
+        cursor: pointer;
+        color: aliceblue;
+        transition: .2s all ease;
+    }
+    button:hover{
+        text-shadow: rgba(226, 226, 226, 0.425) 0 0 10px;
+        transition: .2s all ease;
+    }
+
+    .btn-close{
+        display: flex;
+        align-self: center;
+        margin-top: auto;
+    }
+}
+
+.artist-more.artist-more-show.htmx-added{
+    opacity: 0;
+}
+
+.artist-more.artist-more-show{
+    opacity: 1;
+    pointer-events: unset;
+    transition: .2s opacity ease;
+}
+
+/* ALBUMS PAGE */
+.title.album{
+    display: flex;
+    align-items: center;
+    min-height: 200px;
+    justify-content: start;
+    padding: 0;
+    overflow: hidden;
+
+    h1{
+        display: flex;
+        justify-content: start;
+        flex-direction: column;
+        flex-wrap: wrap;
+        font-size: 3rem;
+
+        .info{
+            display: flex;
+            align-items: center;
+            justify-content: start;
+            gap: 5px;
+            font-size: 0.7rem;
+        }
+        .info p{
+            color: rgba(255, 255, 255, 0.733);
+            font-weight: 700;
+        }
+        .artist-link{
+            color: white;
+            cursor: pointer;
+        }
+        .artist-link:hover{
+            text-decoration: underline;
+        }
+
+        img{
+            position: static;
+            aspect-ratio: 1/1;
+            height: 30px;
+            width: 30px;
+            border-radius: 100%;
+        }
+    }
+    h1 > p{
+        color: white;
+        font-size: 900;
+    }
+
+    .album-img{
+        position: static;
+        aspect-ratio: 1/1;
+        height: 150px;
+        width: auto;
+        margin: 25px;
+        z-index: 10;
+    }
+
+    .cover-img{
+        display: flex;
+        filter: blur(50px);
+    }
+
+    .container-cover{
+        display: flex;
+        top:0;
+        height: 100%;
+        width: 100%;
+        position: absolute;
+
+        .background{
+            background: rgba(0, 0, 0, 0);
+            width: 100%;
+            height: 100%;
+            backdrop-filter: blur(50px);
+        }
+
+        .cover-img{
+            filter: none;
+            z-index: -1;
+        }
+    }
+}
+
+.album{
+    table th{
+        font-size: 0.8rem;
+        padding: 13px;
+        font-weight: 700;
+        border-bottom: 1px rgba(255, 255, 255, 0.048) solid;
+    }
+    table th:nth-child(2){
+        text-align: start;
+    }
+    table th:nth-child(5){
+        text-align:start;
+        padding: 0;
+
+        span{
+            font-size: 20px;
+            margin-top: 8px;
+            margin-left: 22px;
+        }
+    }
+    table td{
+        padding: 13px;
+    }
+
+    table tbody:before{
+        content: '';
+        display: block;
+        height: 10px;
+    }
+}
+
+main .content .album {
+    .songs {
+        .title-song {
+            p{
+                display: flex;
+                flex-direction: column;
+                align-items: start;
+            }
+
+            span {
+                display: flex;
+                width: auto;
+                font-size: 0.9rem;
+                cursor: pointer;
+                font-weight: 400;
+                color: rgba(255, 255, 255, 0.781);
+            }
+            span:hover{
+                text-decoration: underline;
+            }
+        }
+    }
+}

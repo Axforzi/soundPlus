@@ -1,0 +1,395 @@
+:root{
+    --radius: 10px;
+    --color-black: #121212;
+    --color-black2: #1D1D1D;
+    --color-green: #1FDD63;
+    --color-err: #F15E6C;
+    --margin-page: 10px;
+    --color-text: rgba(255, 255, 255, 0.719);
+}
+
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Montserrat;
+}
+
+body, html{
+    display: flex;
+    height: 100vh;
+    flex-direction: column;
+    background: var(--color-black);
+    color: white;
+}
+
+.menu{
+    display: flex;
+    align-items: center;
+    min-height: 50px;
+    background: var(--color-black2);
+    padding: 0 10px;
+
+    nav{
+        display: flex;
+        width: 100%;
+        justify-content: space-between;
+        cursor: default;
+    }
+
+    .container-btns{
+        display: flex;
+    }
+
+    button, .back{
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        background: none;
+        text-decoration: none;
+        color: rgba(236, 236, 236, 0.87);
+        border: none;
+        font-weight: 500;
+        font-size: 1rem;
+        padding: 0 5px;
+        cursor: pointer;
+        transition: .4s all ease;
+
+        span{
+            font-size: 1.3rem;
+        }
+    }
+    button:hover{
+        color: white;
+        transition: .4s all ease;
+    }
+
+    .back{
+        background: rgba(255, 255, 255, 0.918);
+        padding: 5px 10px 5px 5px;
+        border-radius: 10px;
+        color: black;
+    }
+    .back:hover{
+        background: rgb(255, 255, 255);
+    }
+}
+
+main{
+    display: grid;
+    grid-template-columns: 25% 1fr;
+    height: 100%;
+    width: 100%;
+    gap: 10px;
+    padding: 10px;
+}
+main.htmx-swapping{
+    opacity: 0;
+    transition: opacity .2s ease;
+}
+main.htmx-added{
+    opacity: 1;
+    transition: opacity .2s ease;
+}
+
+form{
+    display: flex;
+    flex-direction: column;
+    border-radius: var(--radius);
+    background: var(--color-black2);
+    padding: 10px;
+    gap: 10px;
+    align-self: flex-start;
+
+
+    img{
+        height: 100px;
+    }
+    input[type='text'], input[type='file']{
+        width: 100%;
+    }
+    button{
+        background: var(--color-green);
+        color: black;
+        border-radius: var(--radius);
+        padding: 5px 10px;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+    }
+    button:hover{
+        color: black;
+        background: rgb(57, 196, 115);
+    }
+    button:active{
+        background: rgb(44, 161, 93);
+    }
+    input[type='text']{
+        border: 2px rgba(255, 255, 255, 0.849) solid;
+        color: white;
+        background: none;
+        padding: 6.5px 10px;
+        border-radius: var(--radius);
+        outline: none;
+    }
+    input[type='text']::placeholder{
+        font-weight: 500;
+    }
+    input[type='text']:user-invalid{
+        border: 2px red solid
+    }
+    input[type='text']:valid{
+        border: 2px rgb(118, 221, 161) solid
+    }
+    /* SELECT CHECK BOX  */
+    .select{
+        position: relative;
+        color: black;
+        cursor: pointer;
+        outline: none;
+    }
+    .select span{
+        display: flex;
+        position: relative;
+        font-weight: 500;
+        background: rgb(230, 230, 230);
+        border-radius: var(--radius);
+        color: black;
+        cursor: pointer;
+        padding: 5px 15px;
+        width: 100%;
+        z-index: 10;
+    }
+    .select > div{
+        display: flex;
+        z-index: 9;
+        flex-direction: column;
+        position: absolute;
+        top: 75%;
+        padding-top: 15px;
+        left: 0;
+        background: rgb(189, 189, 189);
+        width: 100%;
+        border-bottom-left-radius: var(--radius);
+        border-bottom-right-radius: var(--radius);
+        opacity: 0;
+        pointer-events: none;
+        overflow: hidden;
+        transform: translateY(-15px);
+        transition: .2s all ease;
+    }
+    .select-show > div{
+        max-height: 200px;
+        overflow-y: auto;
+        opacity: 1;
+        pointer-events: unset;
+        transform: translateY(0px);
+        transition: .2s all ease;
+    }
+    .select input{
+        appearance: none;
+    }
+    .select label{
+        display: flex;
+        cursor: pointer;
+        font-weight: 500;
+        width: 100%;
+        padding: 5px 15px;
+    }
+    .select #id_genre > div:has(input:checked){
+        background: #1fdd616e;
+    }
+    .select #id_genre > div{
+        cursor: pointer;
+        transition: .2s all ease;
+    }
+    .select #id_genre > div:hover{
+        background: rgb(211, 211, 211);
+    }
+    .select #id_album > div:has(input:checked), .select #id_album_type > div:has(input:checked){
+        background: #1fdd616e;
+    }
+    .select #id_album > div, .select #id_album_type > div{
+        cursor: pointer;
+        transition: .2s all ease;
+    }
+    .select #id_album > div:hover, .select #id_album_type > div:hover{
+        background: rgb(211, 211, 211);
+    }
+    .genre{
+        z-index: 10;
+    }
+    .album{
+        z-index: 9;
+    }
+    
+    select{
+        cursor: pointer;
+        padding: 5px 10px;
+        border-radius: var(--radius);
+        outline: none;
+        border: none;
+    }
+
+    /* FILES  */
+    div label:has(input[type='file']){
+        display: flex;
+        flex-direction: column;
+    }
+    input[type='file']::file-selector-button{
+        border: none;
+        padding: 5px 10px;
+        border-radius: var(--radius);
+        cursor: pointer;
+    }
+    input[type='file']::file-selector-button:hover{
+        background: rgb(226, 226, 226);
+    }
+    input[type='file']:user-invalid::file-selector-button{
+        background-color: rgb(153, 51, 51);
+        color: white;
+    }
+    input[type='file']:valid::file-selector-button{
+        background-color: rgb(162, 241, 197);
+        color: rgb(0, 0, 0);
+    }
+    div:has(#id_img:valid) ~ .container-preview{
+        display: flex;
+    }
+
+    .container-preview{
+        display: none;
+        justify-content: center;
+    }
+}
+
+form.htmx-swapping{
+    opacity: 0;
+    transition: opacity .2s ease;
+}
+form.htmx-added{
+    opacity: 1;
+    transition: opacity .2s ease;
+}
+
+.container-table{
+    display: flex;
+    align-items: start;
+    background: var(--color-black2);
+    padding: 10px;
+    border-radius: var(--radius);
+    width: 100%;
+    overflow: auto;
+    height: calc(100vh - 70px);
+
+    button{
+        background: none;
+        color: white;
+        border: none;
+        cursor: pointer;
+        font-weight: 500;
+        transition: .2s all ease;
+    }
+    button:hover{
+        transition: .2s all ease;
+        filter: brightness(1.1);
+    }
+    .btn-edit{
+        background: rgb(236, 236, 236);
+        color: rgb(0, 0, 0);
+        padding: 5px 10px;
+        border-radius: var(--radius);
+    }
+    .btn-edit:active{
+        background: rgb(214, 214, 214);
+    }
+    .btn-delete{
+        background: rgb(211, 55, 55);
+        color: rgb(255, 255, 255);
+        padding: 5px 10px;
+        border-radius: var(--radius);
+    }
+    .btn-delete:active{
+        background: #83232d;
+    }
+}
+
+table{
+    width: 100%;
+
+    th{
+        padding: 5px 5px;
+        text-align: start;
+    }
+    td{
+        padding: 5px 3px;
+    }
+
+    img{
+        height: 50px;
+    }
+    .container-btn{
+        display: flex;
+        flex-direction: column;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+}
+
+@media (max-width:1000px) {
+    main{
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+        margin: 0;
+        padding: 10px;
+        height: 100%;
+    }
+    main form{
+        width: 100%;
+    }
+
+    .container-table{
+        width: 100%;
+    }
+
+    /* TABLE MUSICS  */
+    table.musics th:nth-child(4), table.musics td:nth-child(4){
+        display: none;
+    }
+    table.musics th:nth-child(5), table.musics td:nth-child(5){
+        display: none;
+    }
+
+    table.albums th:nth-child(4), table.albums td:nth-child(4){
+        display: none;
+    }
+}
+
+.loading{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    opacity: 0;
+    pointer-events: none;
+    transition: all .3s ease;
+}
+
+.loading .spinner{
+    border: 5px rgb(101, 228, 158) solid;
+    border-left-color: #12121200;
+    border-bottom-color: #12121200;
+    border-radius: 100%;
+    height: 50px;
+    width: 50px;
+    animation: loading .5s linear infinite;
+}
+
+@keyframes loading {
+    to{
+        transform: rotate(360deg);
+    }
+}

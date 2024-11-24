@@ -1,0 +1,25 @@
+.title-section{
+    margin-top: 20px;
+    margin-left: 20px;
+}
+
+.container-cards{
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    justify-items: center;
+    padding: 10px;
+}
+
+.container-cards:has(h3.is-empty){
+    display: flex;
+    justify-content: center;
+    padding-top: 30px;
+
+    .is-empty{
+        padding-bottom: 25px;
+    }
+}
+
+.container-cards:has(.artist-card) img{
+    border-radius: 100%;
+}

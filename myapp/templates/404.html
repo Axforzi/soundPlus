@@ -1,0 +1,14 @@
+{% extends 'layouts/base.html'%}
+
+{% load static %}
+{% load partials %}
+
+{% partialdef error_404 %}
+    <div class="container-error" style="display: flex; height:100%; align-items: center; justify-content: center;">
+        <h1 style="margin-bottom: 20px; cursor: default"> Esta página no exite. </h1>
+    </div>
+{% endpartialdef %}
+
+{% block content %}
+    {% partial error_404 %}
+{% endblock %}

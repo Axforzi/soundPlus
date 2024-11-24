@@ -1,0 +1,78 @@
+.discography-container{
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.discography{
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+
+    h1{
+        font-size: 1.5rem;
+        margin-left: 22px;
+        margin-bottom: 5px;
+    }
+
+    .discography-body{
+        display: grid;
+        grid-template-columns: 50% 50%;
+    }
+
+    .discography-card{
+        container: card-flex / inline-size;
+        display: flex;
+        cursor: pointer;
+        padding: 20px;
+        border-radius: var(--radius);
+        gap: 10px;
+        width: 100%;
+        transition: background .3s ease;
+
+        .container-cover img{
+            height: 100px;
+            border-radius: var(--radius);
+        }
+
+        .container-info{
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            overflow: hidden;
+            width: 100%;
+
+            h2{
+                text-wrap: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                font-size: 2rem;
+            }
+            p{
+                font-size: 1.5rem;
+                color: rgba(255, 255, 255, 0.76);
+            }
+        }
+    }
+
+    .discography-card:hover{
+        background-color: rgba(0, 0, 0, 0.349);
+    }
+}
+
+.not-content{
+    display: flex;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 25px;
+}
+
+@container card-flex (width < 400px){
+    h2{
+        font-size: 1.3rem !important;
+    }
+    p{
+        font-size: 1rem !important;
+    }
+}
