@@ -103,7 +103,7 @@ class FormMusics(forms.ModelForm):
         super().__init__(*args, **kwargs)
         queryset = Album.objects.filter(name='Ninguno') | Album.objects.filter(artist=artist)
         self.fields['album'].queryset = queryset
-        if initial is not None:
+        if (initial is not None) and queryset.exists():
             self.fields['album'].initial = queryset[0]
 
     class Meta:
