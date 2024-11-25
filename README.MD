@@ -39,6 +39,9 @@ SoundPlus es una aplicación web de música en línea desarrollada con Django in
   <li>Configura la variable de entorno <code>DEBUG</code> como <code>True</code> o <code>False</code> para activar o desactivar el modo de depuración
   </li>
 
+  <li>Configura la variable de entorno <code>CSRF_TRUSTED_ORIGINS</code> con los dominios confiables que pueden enviar solicitudes a la aplicación, separados por comas.
+  </li>
+
   <li>Inicia el servidor de desarrollo: <code>python manage.py runserver</code></li>
 </ol>
 
@@ -62,5 +65,4 @@ Este proyecto, SoundPlus, es una aplicación de música en línea desarrollada c
 <h2>Licencia</h2>
 
 SoundPlus está licenciado bajo la licencia MIT. Ver <code>LICENSE</code> para más información.
-
 
