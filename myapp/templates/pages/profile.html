@@ -72,7 +72,7 @@
                         <img src="{{ request.user.profile_set.first.profile_img_path }}" alt="">
                     {% endif %}
                     <div class="options">
-                        <button hx-get="{% url 'profile_view' %}" 
+                        <button hx-get="{% url 'profile_view' id=request.user.profile_set.first.id %}" 
                                 hx-target=".content"
                                 hx-swap="innerHTML swap:0.2s settle:0.2s"
                                 hx-indicator=".loading.main"
