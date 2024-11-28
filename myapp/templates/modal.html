@@ -1,0 +1,442 @@
+{% load static %}
+{% load partials %}
+{% load custom_filters %}
+
+{% partialdef modalLogin %}
+<div class="modal login {% if messages %} modal-show {% endif %}">
+    <div class="container">
+        <button class="btn-close" hx-on:click="htmx.toggleClass('.login', 'modal-show'); htmx.toggleClass('body', 'hidden-scroll');">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        <h1>Iniciar Sesión en SoundPlus</h1>
+        <div class="line"></div>
+
+        <form method="POST" action="/login/" autocomplete="off">
+            {% csrf_token %}
+            {{ login }}
+
+            {% for message in messages %}
+                {% if message and message.level_tag == 'error' %}
+                    <div class="messages"> <i class="fa-solid fa-circle-info"></i> <p>{{ message.message }}</p> </div>
+                {% endif %}
+            {% endfor %}
+            
+            <button class="btn-submit">Iniciar sesión</button>
+            <a href="">¿Se te ha olvidado la contraseña?</a>
+        </form>
+
+        <div class="line"></div>
+        <p> ¿No tienes cuenta? Puedes registrarte <a href="/signup"> aquí </a> </p>
+    </div>
+</div>
+{% endpartialdef %}
+
+{% partialdef modalMusic %}
+    <!-- MUSIC - MODAL -->
+    <div class="artist-more artist-more-show">
+        <div class="header">
+            <img src="{{ music.imgUrl }}" alt="{{ music.name }}" class="song-img">
+            <p class="info">
+                {{ music.artist.name }}
+                <span> 100 </span>
+            </p>
+        </div>
+        <div class="btn-container">
+            <button hx-on:click="htmx.toggleClass('.artist-more', 'artist-more-show')" class="like"> <i class="fa-regular fa-heart"></i> Me gusta </button>
+            
+            <button hx-on:click="htmx.toggleClass('.artist-more', 'artist-more-show')" class="play"> <i class="fa-solid fa-music"></i> Ver pista </button>
+            
+            <button hx-on:click="htmx.toggleClass('.artist-more', 'artist-more-show')"
+                    hx-get="{% url 'album_view' artist_name=music.artist.name album_name=music.album.name %}" class="album"
+                    hx-target=".content"
+                    hx-swap="innerHTML swap:0.2s settle:0.2s"
+                    hx-indicator=".loading.main">
+                    <i class="fa-solid fa-compact-disc"></i> Ver album 
+            </button>
+        </div>
+        <button hx-on:click="htmx.toggleClass('.artist-more', 'artist-more-show')" class="btn-close"> Cerrar </button>
+    </div>
+{% endpartialdef %}
+
+{% partialdef modalProfile %}
+    <div class="modal profile">
+        <div class="container-form">
+            <form   id="profile-form"
+                    hx-post="{% url 'profile_save' %}" 
+                    hx-target=".content"
+                    hx-swap="innerHTML swap:0.2s settle:0.2s"
+                    hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                    hx-indicator=".loading.main"
+                    autocomplete="off"
+                    enctype="multipart/form-data">
+                <h2>Detalles del perfil</h2>
+                <div class="container-img">
+                    {% if profile.profileImg == '' %}
+                        <i class="fa-regular fa-user preview-img"></i>
+                    {% else %}
+                        <img src="{{ profile.profileImgUrl }}" class="preview-img">
+                    {% endif %}
+
+                    <label for="{{ formProfile.profileImg.id_for_label }}">
+                        <span class="material-symbols-outlined">edit</span>
+                        Editar Foto
+                        {{ formProfile.profileImg }}
+                    </label>
+                </div>
+                <fieldset>
+                    <legend> Imagen de fondo </legend>
+                    {{ formProfile.coverImg }}
+                </fieldset>
+                {{ formProfile.name }}
+            </form>
+            <div class="container-btn">
+                <button form="profile-form"> Guardar </button>
+                <button hx-on:click="htmx.toggleClass('.modal.profile', 'modal-show')"> Cancelar </button>
+            </div>
+        </div>
+    </div>
+{% endpartialdef %}
+
+{% partialdef modalArtistAccount %}
+    <div class="modal profile">
+        <div class="container-form">
+            <form   id="profile-form"
+                    hx-post="{% url 'artist_account_save' %}" 
+                    hx-target=".content"
+                    hx-swap="innerHTML swap:0.2s settle:0.2s"
+                    hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                    hx-indicator=".loading.main"
+                    autocomplete="off"
+                    enctype="multipart/form-data">
+                <h2>Detalles del perfil</h2>
+                <div class="container-img">
+                    {% if artist.profileImg == '' %}
+                        <i class="fa-regular fa-user preview-img"></i>
+                    {% else %}
+                        <img src="{{ artist.profileImgUrl }}" class="preview-img">
+                    {% endif %}
+
+                    <label for="{{ formProfile.profileImg.id_for_label }}">
+                        <span class="material-symbols-outlined">edit</span>
+                        Editar Foto
+                        {{ formProfile.profileImg }}
+                    </label>
+                </div>
+                <fieldset>
+                    <legend> Imagen de fondo </legend>
+                    {{ formProfile.coverImg }}
+                </fieldset>
+                {{ formProfile.name }}
+            </form>
+            <div class="container-btn">
+                <button form="profile-form"> Guardar </button>
+                <button hx-on:click="htmx.toggleClass('.modal.profile', 'modal-show')"> Cancelar </button>
+            </div>
+        </div>
+    </div>
+{% endpartialdef %}
+
+{% partialdef tableSongs %}
+    {% if is_artist %}
+        <button class="random loading-music {% if random %}active{% endif %}"
+                hx-post="{% url 'play_artist' artist_name=is_artist %}{% if not random %}?random=True{% endif %}"
+                hx-target=".songs-queue"
+                hx-swap="outerHTML"
+                hx-swap-oob="outerHTML:.player .buttons .random">
+            <span class="material-symbols-outlined">shuffle</span>
+        </button>
+    {% elif is_album %}
+        <button class="random loading-music {% if random %}active{% endif %}"
+                hx-post="{% url 'play_album' id=is_album %}{% if not random %}?random=True{% endif %}"
+                hx-target=".songs-queue"
+                hx-swap="outerHTML"
+                hx-swap-oob="outerHTML:.player .buttons .random">
+                <span class="material-symbols-outlined">shuffle</span>
+        </button>
+    {% elif is_music_on_album %}
+        <button class="random loading-music {% if random %}active{% endif %}"
+                hx-post="{% url 'play_music_album' id=is_music_on_album %}{% if not random %}?random=True{% endif %}"
+                hx-target=".songs-queue"
+                hx-swap="outerHTML"
+                hx-swap-oob="outerHTML:.player .buttons .random">
+                <span class="material-symbols-outlined">shuffle</span>
+        </button>
+    {% elif is_music %}
+        <button class="random loading-music {% if random %}active{% endif %}"
+                hx-post="{% url 'play_music' id=is_music %}{% if not random %}?random=True{% endif %}"
+                hx-target=".songs-queue"
+                hx-swap="outerHTML"
+                hx-swap-oob="outerHTML:.player .random">
+                <span class="material-symbols-outlined">shuffle</span>
+        </button>
+    {% elif is_liked_musics %}
+        <button class="random loading-music {% if random %}active{% endif %}"
+                hx-post="{% url 'play_liked_musics' %}{% if not random %}?random=True{% endif %}"
+                hx-target=".songs-queue"
+                hx-swap="outerHTML"
+                hx-swap-oob="outerHTML:.player .buttons .random">
+                <span class="material-symbols-outlined">shuffle</span>
+        </button>
+    {% elif is_liked_music %}
+        <button class="random loading-music {% if random %}active{% endif %}"
+                hx-post="{% url 'play_liked_music' id=is_liked_music %}{% if not random %}?random=True{% endif %}"
+                hx-target=".songs-queue"
+                hx-swap="outerHTML"
+                hx-swap-oob="outerHTML:.player .buttons .random">
+                <span class="material-symbols-outlined">shuffle</span>
+        </button>
+    {% elif is_list %}
+        <button class="random loading-music {% if random %}active{% endif %}"
+                hx-post="{% url 'play_list' id=is_list %}{% if not random %}?random=True{% endif %}"
+                hx-target=".songs-queue"
+                hx-swap="outerHTML"
+                hx-swap-oob="outerHTML:.player .buttons .random">
+                <span class="material-symbols-outlined">shuffle</span>
+        </button>
+    {% elif is_list_music %}
+        <button class="random loading-music {% if random %}active{% endif %}"
+                hx-post="{% url 'play_music_list' id_list=id_list id_music=id_music %}{% if not random %}?random=True{% endif %}"
+                hx-target=".songs-queue"
+                hx-swap="outerHTML"
+                hx-swap-oob="outerHTML:.player .buttons .random">
+                <span class="material-symbols-outlined">shuffle</span>
+        </button>
+    {% endif %}
+
+    <table class="songs-queue" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+        <thead>
+            <th colspan="2">Titulo</th>
+            <th>Reproducciones</th>
+            <th></th>
+            <th><span class="material-symbols-outlined">schedule</span></th>
+            <th></th>
+        </thead>
+        <tbody>
+            {% for music in musics_queue %}
+                <tr class="song" data-number="{{ forloop.counter0 }}" data-id="{{ music.id }}" data-name="{{ music.name }}" data-album="{{ music.album.name }}" data-artist="{{ music.artist.name }}">
+                    <td class="play"> 
+                        <div class="play-music-queue">
+                            <img src="{{ music.imgUrl }}" alt="{{ music.name }}">
+                        </div> 
+                    </td>
+                    <td class="title-song"> 
+                        <p>{{ music.name }} 
+                            <span hx-get="{% url 'artist_view' artist_name=music.artist.name %}"
+                                hx-target=".content"
+                                hx-swap="innerHTML swap:0.2s settle:0.2s"
+                                hx-indicator=".loading.main"
+                                hx-push-url="true"
+                                class="link-artist">
+                                {{ music.artist.name | upper }} 
+                            </span>
+                        </p> 
+                    </td>
+                    <td class="views"> {{ music.views }} </td>
+                    <td class="add">
+                        {% if request.user.is_authenticated %}
+                            <button class="add-library {% if music|liked_user:request.user %}added{% endif %}"
+                                    hx-post="{% url 'like_music' id=music.id %}">
+                                    <span class="material-symbols-outlined">favorite</span>
+                            </button>
+                        {% else %}
+                            <button class="add-library"
+                                    hx-on:click="htmx.toggleClass(htmx.find('.modal.login'), 'modal-show')">
+                                    <span class="material-symbols-outlined">favorite</span>
+                            </button>
+                        {% endif %}
+                    </td>
+                    <td class="duration"> {{ music.duration }} </td>
+                    <td class="more"> 
+                        <button class="btn-more-music">
+                            <span class="material-symbols-outlined"> more_vert </span>
+                        </button>
+                        <div class="context">
+                            <div class="add-list"> <span class="material-symbols-outlined">list</span>
+                                Añadir a la lista 
+
+                                <div class="lists">
+                                    {% for list in request.user.profile_set.first.list_set.all %}
+                                        <button class="btn-add-list"
+                                                hx-post="{% url 'add_to_list' id_list=list.id id_music=music.id %}"
+                                                hx-swap="outerHTML"> 
+                                            <span class="material-symbols-outlined"> 
+                                               {% if music|check_list:list %} close {% else %} add {% endif %}
+                                            </span> 
+                                            <p class="name"> {{ list.name }} </p> 
+                                        </button>
+                                    {% empty %}
+                                        <p class="no-list"> No hay listas disponibles. </p>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <button class="remove-queue"> 
+                                    <span class="material-symbols-outlined">playlist_remove</span>
+                                    Eliminar de la cola
+                            </button>
+                            <button hx-get="{% url 'artist_view' artist_name=music.artist.name %}"
+                                    hx-target=".content"
+                                    hx-swap="innerHTML swap:0.2s settle:0.2s"
+                                    hx-push-url="true"> 
+                                    <span class="material-symbols-outlined"> artist </span>
+                                Ir al artista
+                            </button>
+                            <button hx-get="{% url 'album_view' artist_name=music.artist.name album_name=music.album.name %}"
+                                    hx-target=".content"
+                                    hx-swap="innerHTML swap:0.2s settle:0.2s"
+                                    hx-push-url="true"> 
+                                <span class="material-symbols-outlined">album</span>
+                                Ir al album 
+                            </button>
+                        </div> 
+                    </td>
+                </tr>
+            {% empty %}
+                <tr class="song empty">
+                    <td style="text-align: center;" colspan="6"> <h2> No hay canciones en la cola </h2> </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endpartialdef %}
+
+{% partialdef playQueue %}
+    <div class="play-queue">
+        <h2>Cola</h2>
+        {% partial tableSongs %}
+    </div>
+{% endpartialdef %}
+
+{% partialdef queueElement %}
+    <tr class="song" data-number="" data-id="{{ music.id }}" data-name="{{ music.name }}" data-album="{{ music.album.name }}" data-artist="{{ music.artist.name }}">
+        <td class="play"> 
+            <div class="play-music-queue">
+                <img src="{{ music.imgUrl }}" alt="{{ music.name }}">
+            </div> 
+        </td>
+        <td class="title-song"> 
+            <p>{{ music.name }} 
+                <span hx-get="{% url 'artist_view' artist_name=music.artist.name %}"
+                    hx-target=".content"
+                    hx-swap="innerHTML swap:0.2s settle:0.2s"
+                    hx-indicator=".loading.main"
+                    hx-push-url="true"
+                    onclick="showQueue()">
+                    {{ music.artist.name | upper }} 
+                </span>
+            </p> 
+        </td>
+        <td class="views"> 100 </td>
+        <td class="add">
+            {% if request.user.is_authenticated %}
+                <button class="add-library {% if music|liked_user:request.user %}added{% endif %}"
+                        hx-post="{% url 'like_music' id=music.id %}">
+                        <span class="material-symbols-outlined">favorite</span>
+                </button>
+            {% else %}
+                <button class="add-library"
+                        hx-on:click="htmx.toggleClass(htmx.find('.modal.login'), 'modal-show')">
+                        <span class="material-symbols-outlined">favorite</span>
+                </button>
+            {% endif %}
+        </td>
+        <td class="duration"> {{ music.duration }} </td>
+        <td class="more"> 
+            <button class="btn-more-music">
+                <span class="material-symbols-outlined"> more_vert </span>
+            </button>
+            <div class="context">
+                <button> <span class="material-symbols-outlined">list</span>
+                    Añadir a la lista 
+                </button>
+                <button class="remove-queue">
+                        <span class="material-symbols-outlined">playlist_remove</span>
+                        Eliminar de la cola
+                </button>
+                <button hx-get="{% url 'artist_view' artist_name=music.artist.name %}"
+                        hx-target=".content"
+                        hx-swap="innerHTML swap:0.2s settle:0.2s"
+                        hx-push-url="true"> 
+                    <span class="material-symbols-outlined">album</span>
+                    Ir al artista
+                </button>
+                <button hx-get="{% url 'album_view' artist_name=music.artist.name album_name=music.album.name %}"
+                        hx-target=".content"
+                        hx-swap="innerHTML swap:0.2s settle:0.2s"
+                        hx-push-url="true"> 
+                    <span class="material-symbols-outlined">album</span>
+                    Ir al album 
+                </button>
+            </div> 
+        </td>
+    </tr>
+{% endpartialdef %}
+
+{% partialdef modalNewList %}
+    <div class="container-list-form {% if exists or isEmpty or largeName %} show {% endif %}" hx-swap-oob="outerHTML:.container-list-form">
+        <form id="newList"
+              hx-post="{% url 'new_list' %}"
+              hx-target=".library-body .container-elements"
+              hx-swap="afterbegin"
+              hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+              autocomplete="off">
+            <input type="text" name="name" id="name" placeholder="Nombre de la lista" maxlength="40">
+
+            {% if exists %}
+                <p class="text-warning"> Esta lista ya existe! </p>
+            {% endif %}
+            {% if isEmpty %}
+                <p class="text-warning"> Ingresa un nombre para la lista! </p>
+            {% endif %}
+            {% if largeName %}
+                <p class="text-warning"> Este nombre es muy largo! </p>
+            {% endif %}
+        </form>
+        <div class="btns">
+            <button class="btn-primary confirm-new-list" id="btnAddList" form="newList">Agregar</button>
+            <button class="btn-primary cancel-list-form">Cancelar</button>
+        </div>
+    </div>
+{% endpartialdef %}
+
+{% partialdef confirmDeleteList %}
+    <div class="confirm-modal">
+        <div class="container">
+            <header> 
+                <h2> Desea eliminar esta lista? </h2>
+            </header>
+            <footer>
+                <button hx-get="{% url 'delete_list' name=nameList %}"> Confirmar </button>
+                <button hx-on:click="htmx.toggleClass(htmx.find('.confirm-modal'), 'show')"> Cancelar </button>
+            </footer>
+        </div>
+    </div>
+{% endpartialdef %}
+
+{% partialdef editList %}
+    <div class="edit-list-modal {% if isEmpty or exists or largeName %} show {% endif%}">
+        <div class="container">
+            <form id="editListForm" autocomplete="off"
+                  hx-headers='{ "X-CSRFToken": "{{ csrf_token }}" }'
+                  hx-post="{% url 'edit_list' id_list=list.id %}"
+                  hx-target=".edit-list-modal"
+                  hx-swap="outerHTML"
+                  hx-indicator=".loading.main">
+                <input name="name" type="text" placeholder="Nombre de la lista" value="{{ nameList }}" maxlength="40">
+
+                {% if isEmpty %}
+                    <p style="color: rgba(255, 0, 0, 0.781); font-weight: 600; padding-top: 6px; text-align:center"> Ingresa un nombre!</p>
+                {% endif %}
+                {% if exists %}
+                    <p style="color: rgba(255, 0, 0, 0.781); font-weight: 600; padding-top: 6px; text-align:center"> Una lista con este nombre ya existe!</p>
+                {% endif %}
+                {% if largeName %}
+                    <p style="color: rgba(255, 0, 0, 0.781); font-weight: 600; padding-top: 6px; text-align:center"> El nombre es muy largo!</p>
+                {% endif %}
+            </form>
+            <footer>
+                <button form="editListForm"> Guardar </button>
+                <button hx-on:click="htmx.toggleClass(htmx.find('.edit-list-modal'), 'show')"> Cancelar </button>
+            </footer>
+        </div>
+    </div>
+{% endpartialdef %}

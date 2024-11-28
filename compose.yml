@@ -1,0 +1,13 @@
+services:
+  app:
+    build: 
+      context: .
+      dockerfile: ./dockerfile
+
+    container_name: soundPlus
+
+    ports:
+      - "8000:8000"
+
+    volumes:
+      - .:/app

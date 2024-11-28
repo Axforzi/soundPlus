@@ -1,0 +1,67 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="shortcut icon" href="{% static 'img/favicon.ico' %}" type="image/x-icon">
+
+    <link rel="stylesheet" href="{% static 'css/admin.css'%}">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+    <title>Administración</title>
+</head>
+<body>
+    <header class="menu">
+        <nav>
+            <div class="container-btns">
+                <button hx-get="{% url 'management_musics' %}" hx-target=".content" hx-swap="innerHTML swap:0.2s settle:0.2s" hx-indicator=".loading.main">Canciones</button>
+                <button hx-get="{% url 'management_albums' %}" hx-target=".content" hx-swap="innerHTML swap:0.2s settle:0.2s" hx-indicator=".loading.main">Albumes</button>
+            </div>
+            <a href="{% url 'artist_account' %}" class="back"> <span class="material-symbols-outlined">arrow_back</span> Volver</a>
+        </nav>
+    </header>
+
+    <main class="content" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <div class="loading main htmx-indicator">
+        <div class="spinner"></div>
+    </div>
+
+    <script src="{% static 'js/htmx.min.js' %}" defer></script>
+    <script>
+        const previewImg = (event) => {
+            const file = event.target.files;
+            if (file) {
+                const fileReader = new FileReader();
+                const preview = document.getElementById('file-preview');
+                fileReader.onload = event => {
+                    preview.setAttribute('src', event.target.result);
+                }
+                fileReader.readAsDataURL(file[0]);
+            }
+        }
+
+        const onSelectAlbum = (event) => {
+            if(event.target.value !== '1'){
+                document.querySelector('#id_img').disabled = true;
+            }
+            else{
+                document.querySelector('#id_img').disabled = false;
+            }
+        }
+
+        // CHECK RADIO
+        let ev = new Event('change')
+        let element = document.querySelector('input[type="radio"]:checked');
+        element.dispatchEvent(ev);
+    </script>
+</body>
+</html>

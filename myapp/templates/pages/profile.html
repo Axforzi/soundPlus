@@ -1,0 +1,113 @@
+{% extends 'layouts/base.html' %}
+
+{% load static %}
+{% load partials %}
+{% load custom_filters %}
+
+{% partialdef profile %}
+    <div class="title profile-title">
+        <div class="container-info {% if formProfile is None %} no-modal {% endif %}">
+            <div class="container-img-profile" hx-on:click="htmx.toggleClass('.modal.profile', 'modal-show')">
+                {% if profile.profileImg == '' %}
+                    <i class="fa-regular fa-user" class="profile-img"></i>
+                {% else %}
+                    <img src="{{ profile.profileImgUrl }}" alt="profile-img" class="profile-img">
+                {% endif %}
+                <p class="edit-btn"> <span class="material-symbols-outlined">edit</span> 
+                    Editar Foto
+                </p>
+            </div>
+            <h1 hx-on:click="htmx.toggleClass('.modal.profile', 'modal-show')">{{ profile.name }}</h1>
+        </div>
+
+        {% if profile.coverImg == '' %}
+            <div class="cover-img background-white"></div>
+        {% else %}
+            <img class="cover-img" src="{{ profile.coverImgUrl }}" alt="">
+        {% endif %}
+    </div>
+
+    <div class="profile">
+        <section>
+            <h2> Listas de reproducción </h2>
+
+            <div class="body-cards">
+                {% for list in lists %}
+                    <div class="card">
+                        <div class="container-card" hx-get="{% url 'view_mylist' name=list.name %}"
+                        hx-target=".content" hx-swap="innerHTML swap:0.2s settle:0.2s" hx-push-url="true" hx-indicator=".loading.main">
+                            {% if list.getImg != '' %}
+                                <div class="container-img">
+                                    <img src="/media/{{ list.getImg }}" alt="{{ list.name }}">
+                                </div>
+                            {% else %}
+                                <div class="container-img liked-musics">
+                                    <span class="material-symbols-outlined"> list </span>
+                                </div> 
+                            {% endif %}
+                            <p class="name">{{ list.name }}</p>
+                        </div>
+                        <button class="btn-play"
+                                hx-get="{% url 'play_list' id=list.id %}" 
+                                hx-target=".songs-queue"
+                                hx-swap="outerHTML"> 
+                            <i class="fa-solid fa-play"></i> 
+                        </button>
+                    </div>
+                {% empty %}
+                    <h4> Este perfil no tiene listas de reproducción. </h4>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+
+    <!-- UPDATE ICON ON HEADER CONTENT  -->
+    {% if request.htmx and updateHeader %}
+        <div class="container2" hx-swap-oob="outerHTML:.container2">
+            {% if request.user.is_authenticated %}
+                <div class="container-logged">
+                    {% if request.user.profile_set.first.profileImg == '' %}
+                        <i style="padding: 5px 6px;" class="fa-regular fa-user" class="profile-img"></i>
+                    {% else %}
+                        <img src="{{ request.user.profile_set.first.profileImgUrl }}" alt="">
+                    {% endif %}
+                    <div class="options">
+                        <button hx-get="{% url 'profile_view' id=request.user.profile_set.first.id %}" 
+                                hx-target=".content"
+                                hx-swap="innerHTML swap:0.2s settle:0.2s"
+                                hx-indicator=".loading.main"
+                                hx-push-url="true"
+                                class="option"> Perfil 
+                        </button>
+                        {% if request.user.artist_set.first is not None %}
+                            <button hx-get="{% url 'artist_account' %}"
+                                    hx-target=".content"
+                                    hx-swap="innerHTML swap:0.2s settle:0.2s"
+                                    hx-indicator=".loading.main"
+                                    hx-push-url="true"
+                                    class="option"> 
+                                    Cuenta de artista 
+                            </button>
+                        {% endif %}
+                        <a href="/logout" class="option"> Cerrar Sesión </a>
+                    </div>
+                </div>
+            {% else %}
+                <a href="/signup">Registrarse</a>
+                <button hx-on:click="htmx.toggleClass('.login', 'modal-show');
+                                    htmx.toggleClass('body', 'hidden-scroll');" class="btn-primary">
+                        Iniciar Sesión </button>
+            {% endif %}
+        </div>
+    {% endif %}
+    <!-- ------------------------------------------------------------------------------------------------>
+    
+    
+    {% if formProfile %}
+        {% include 'modal.html#modalProfile' %}
+    {% endif %}
+{% endpartialdef %}
+
+{% block content %}
+    {% partial profile %}
+{% endblock %}

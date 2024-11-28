@@ -1,0 +1,60 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{% static 'css/main.css' %}">
+    <link rel="stylesheet" href="{% static 'css/signup.css' %}">
+    <link rel="shortcut icon" href="{% static 'img/favicon.ico' %}" type="image/x-icon">
+
+    <title>Registrarse</title>
+</head>
+<body>
+    <h2><img src="{% static 'img/logo.png' %}" alt="logo"></h2>
+    <h1>Regístrate para empezar a escuchar contenido</h1>
+    <form method="POST" autocomplete="off" class="signup-form">
+        {% csrf_token %}
+        <div>
+            {{ signup.first_name.label_tag }}
+            {{ signup.first_name }}
+        </div>
+        <div>
+            {{ signup.last_name.label_tag }}
+            {{ signup.last_name }}
+        </div>
+        <div>
+            {{ signup.email.label_tag }}
+            {{ signup.email }}
+        </div>
+        <div {% if signup.username.errors %}class="error"{% endif %}>
+            {{ signup.username.label_tag }}
+            {{ signup.username }}
+            {{ signup.username.errors }}
+        </div>
+        <div {% if signup.password2.errors %}class="error" {% endif %}>
+            {{ signup.password1.label_tag }}
+            {{ signup.password1 }}
+        </div>
+        <div {% if signup.password2.errors %}class="error"{% endif %}>
+            {{ signup.password2.label_tag }}
+            {{ signup.password2 }}
+            {% for message in messages %} 
+                <ul class="errorlist">
+                    <li>{{ message }}</li>
+                </ul>
+            {% endfor %}
+        </div>
+        <button class="btn-primary">Registrarse</button>
+    </form>
+</body>
+
+<script>
+    addEventListener('keydown', (event) => {
+        if(event.target.matches('input') && event.target.parentNode.classList.contains('error')){
+            event.target.parentNode.classList.toggle('error');
+        }
+    })
+</script>
+
+</html>

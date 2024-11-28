@@ -1,0 +1,134 @@
+{% extends 'layouts/base.html' %}
+
+{% load static %}
+{% load partials %}
+{% load custom_filters %}
+
+{% partialdef single %}
+    <div class="title album">
+        <img src="{{ music.imgUrl }}" alt="{{ music.name }}" class="album-img">
+        <h1>{{ music.name }} 
+            <span class="info">
+                <img src="{{ artist.profileImgUrl }}" alt="{{ artist.name }}"> 
+                <p> 
+                    <span class="artist-link" 
+                        hx-get="{% url 'artist_view' artist_name=artist.name %}"
+                        hx-target=".content"
+                        hx-swap="innerHTML swap:0.2s settle:0.2s"
+                        hx-indicator=".loading.main"
+                        hx-push-url="true"> 
+                        {{ artist.name | upper }} 
+                    </span> · Sencillo
+                </p>
+            </span> 
+        </h1>
+        <div class="container-cover">
+            <div class="background"></div>
+            <img class="cover-img" src="{{ music.imgUrl }}" alt="{{ music.name }}">
+        </div>
+    </div>
+
+    <div class="album" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+        <div class="btns-container">
+            <button class="btn-play"
+                    hx-post="{% url 'play_music' id=music.id %}"
+                    hx-target=".songs-queue"
+                    hx-swap="outerHTML"> 
+                        <i class="fa-solid fa-play"></i> 
+            </button>
+        </div>
+    
+        <div class="popular-songs">
+            <table class="songs">
+                <thead>
+                    <th>#</th>
+                    <th>Titulo</th>
+                    <th>Reproducciones</th>
+                    <th></th>
+                    <th><span class="material-symbols-outlined">schedule</span>Duración</th>
+                    <th></th>
+                </thead>
+                <tbody>
+                    <tr class="song" data-id="{{ music.id }}">
+                        <td class="play"> 
+                            <div hx-get="{% url 'play_music' id=music.id %}"
+                                hx-target=".songs-queue"
+                                hx-swap="outerHTML"
+                                class="play-music">
+                                1
+                            </div> 
+                        </td>
+                        <td class="title-song"> 
+                            <p>{{ music.name }} 
+                                <span hx-get="{% url 'artist_view' artist_name=music.artist.name %}"
+                                        hx-target=".content"
+                                        hx-swap="innerHTML swap:0.2s settle:0.2s"
+                                        hx-indicator=".loading.main"
+                                        hx-push-url="true">
+                                    {{ music.artist.name | upper }} 
+                                </span>
+                            </p> 
+                        </td>
+                        <td class="views"> {{ music.views }} </td>
+                        <td class="add">
+                            {% if request.user.is_authenticated %}
+                                <button class="add-library {% if music|liked_user:request.user %}added{% endif %}"
+                                        hx-post="{% url 'like_music' id=music.id %}">
+                                        <span class="material-symbols-outlined">favorite</span>
+                                </button>
+                            {% else %}
+                                <button class="add-library"
+                                        hx-on:click="htmx.toggleClass(htmx.find('.modal.login'), 'modal-show')">
+                                        <span class="material-symbols-outlined">favorite</span>
+                                </button>
+                            {% endif %}
+                        </td>
+                        <td class="duration"> {{ music.duration }} </td>
+                        <td class="more"> 
+                            <button class="btn-more-music">
+                                    <span class="material-symbols-outlined"> more_vert </span> 
+                            </button>
+                            <div class="context">
+                                <div class="add-list"> <span class="material-symbols-outlined">list</span>
+                                    Añadir a la lista 
+    
+                                    <div class="lists">
+                                        {% for list in request.user.profile_set.first.list_set.all %}
+                                            <button class="btn-add-list"
+                                                    hx-post="{% url 'add_to_list' id_list=list.id id_music=music.id %}"
+                                                    hx-swap="outerHTML"> 
+                                                <span class="material-symbols-outlined"> 
+                                                    {% if music|check_list:list %} close {% else %} add {% endif %}
+                                                </span> 
+                                                <p class="name"> {{ list.name }} </p> 
+                                            </button>
+                                        {% empty %}
+                                            <p class="no-list"> No hay listas disponibles. </p>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <button hx-get="{% url 'add_queue' id=music.id %}"
+                                        hx-target=".songs-queue tbody"
+                                        hx-swap="beforeend"
+                                        class="add-queue"> <span class="material-symbols-outlined">queue_music</span> 
+                                        Añadir a la cola 
+                                </button>
+                                <button hx-get="{% url 'artist_view' artist_name=music.artist.name %}"
+                                        hx-target=".content"
+                                        hx-swap="innerHTML swap:0.2s settle:0.2s"
+                                        hx-push-url="true"> 
+                                        <span class="material-symbols-outlined"> artist </span>
+                                    Ir al artista
+                                </button>
+                            </div> 
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endpartialdef %}
+
+{% block content %}
+    {% partial single %}
+{% endblock %}

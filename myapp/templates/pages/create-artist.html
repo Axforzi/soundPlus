@@ -1,0 +1,82 @@
+{% extends 'layouts/base.html' %}
+
+{% load static %}
+{% load partials %}
+
+{% partialdef form %}
+    <form   hx-post="/create-artist/" 
+            hx-target="#profile-form"
+            hx-swap="outerHTML swap:0.2s settle:0.2s"
+            hx-indicator=".loading.main"
+            id="profile-form" autocomplete="off" enctype="multipart/form-data">
+        {% csrf_token %}
+        <h2>Detalles de la cuenta</h2>
+        <div class="container-img">
+            <div class="preview-img">
+                <i class="fa-regular fa-user"></i>
+            </div>
+
+            <label for="{{ formProfile.profileImg.id_for_label }}">
+                <span class="material-symbols-outlined">edit</span>
+                Editar Foto
+                {{ formProfile.profileImg }}
+            </label>
+        </div>
+
+        <fieldset>
+            <legend> Imagen de fondo </legend>
+            {{ formProfile.coverImg }}
+        </fieldset>
+
+        <div class="group">
+            {{ formProfile.name }}
+            {{ formProfile.name.errors }}
+        </div>
+        <button> Crear cuenta de artista </button>
+    </form>
+{% endpartialdef %}
+
+{% partialdef page %}
+    <div class="container-create-artist">
+        {% partial form %}
+        <div class="preview-profile">
+            <h2> Vista previa </h2>
+            <div class="preview">
+                <div class="background">
+                    <div class="preview-img">
+                        <i class="fa-regular fa-user"></i>
+                    </div>
+                    <h1 class="preview-title"> Artista </h1>
+                    <div class="preview-background"></div>
+                </div>
+                <div class="preview-content">
+                    <button><i class="fa-solid fa-play preview-play"></i></button>
+                    <button class="preview-follow">Seguir</button>
+                    <h4> Populares </h4>
+                    <table class="preview-popular">
+                        <tr>
+                            <td> <div><p class="name"></p> <p class="extra"></p></div> </td>
+                        </tr>
+                        <tr>
+                            <td> <div><p class="name"></p> <p class="extra"></p></div> </td>
+                        </tr>
+                        <tr>
+                            <td> <div><p class="name"></p> <p class="extra"></p></div> </td>
+                        </tr>
+                    </table>
+                    <h4>Albumes</h4>
+                    <div class="group-cards">
+                        <div class="card"></div>
+                        <div class="card"></div>
+                        <div class="card"></div>
+                        <div class="card"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endpartialdef %}
+
+{% block content %}
+    {% partial page %}
+{% endblock %}

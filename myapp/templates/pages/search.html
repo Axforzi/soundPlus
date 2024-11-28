@@ -1,0 +1,339 @@
+{% extends 'layouts/base.html' %}
+
+{% load static %}
+{% load partials %}
+{% load custom_filters %}
+
+{% partialdef songs %}
+    <table class="songs-search">
+        <thead>
+            <th>#</th>
+            <th>Titulo</th>
+            <th>Reproducciones</th>
+            <th></th>
+            <th><span class="material-symbols-outlined">schedule</span></th>
+            <th></th>
+        </thead>
+        <tbody>
+            {% for music in musics %}
+                <tr class="song" data-id="{{ music.id }}" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+                    <td class="play"> 
+                        <div hx-get="{% url 'play_music'  id=music.id %}"
+                            hx-target=".songs-queue"
+                            hx-swap="outerHTML"
+                            class="play-music">
+                            {{ forloop.counter }}
+                        </div> 
+                    </td>
+                    <td class="title-song"> 
+                        <p>{{ music.name }} 
+                            <span hx-get="{% url 'artist_view' artist_name=music.artist.name %}"
+                                hx-target=".content"
+                                hx-swap="innerHTML swap:0.2s settle:0.2s"
+                                hx-indicator=".loading.main"
+                                hx-push-url="true">
+                                {{ music.artist.name | upper }} 
+                            </span>
+                        </p> 
+                    </td>
+                    <td class="views"> {{ music.views }} </td>
+                    <td class="add">
+                        {% if request.user.is_authenticated %}
+                            <button class="add-library {% if music|liked_user:request.user %}added{% endif %}"
+                                    hx-post="{% url 'like_music' id=music.id %}">
+                                    <span class="material-symbols-outlined">favorite</span>
+                            </button>
+                        {% else %}
+                            <button class="add-library"
+                                    hx-on:click="htmx.toggleClass(htmx.find('.modal.login'), 'modal-show')">
+                                    <span class="material-symbols-outlined">favorite</span>
+                            </button>
+                        {% endif %}
+                    </td>
+                    <td class="duration"> {{ music.duration }} </td>
+                    <td class="more"> 
+                        <button class="btn-more-music">
+                                <span class="material-symbols-outlined"> more_vert </span> 
+                        </button>
+                        <div class="context">
+                            <div class="add-list"> <span class="material-symbols-outlined">list</span>
+                                Añadir a la lista 
+
+                                <div class="lists">
+                                    {% for list in request.user.profile_set.first.list_set.all %}
+                                        <button class="btn-add-list"
+                                                hx-post="{% url 'add_to_list' id_list=list.id id_music=music.id %}"
+                                                hx-swap="outerHTML swap:.2s settle:.2s"
+                                                {% if nameList != 'liked_musics' %} hx-indicator=".loading.main" {% endif %}> 
+                                            <span class="material-symbols-outlined">
+                                            {% if music|check_list:list %} close {% else %} add {% endif %}
+                                            </span> 
+                                            <p class="name"> {{ list.name }} </p>
+                                        </button>
+                                    {% empty %}
+                                        <p class="no-list"> No hay listas disponibles. </p>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <button hx-get="{% url 'add_queue' id=music.id %}"
+                                    hx-target=".songs-queue tbody"
+                                    hx-swap="beforeend"
+                                    class="add-queue"> <span class="material-symbols-outlined">queue_music</span> 
+                                    Añadir a la cola 
+                            </button>
+                            <button hx-get="{% url 'artist_view' artist_name=music.artist.name %}"
+                                    hx-target=".content"
+                                    hx-swap="innerHTML swap:0.2s settle:0.2s"
+                                    hx-push-url="true"> 
+                                    <span class="material-symbols-outlined"> artist </span>
+                                Ir al artista
+                            </button>
+                            <button hx-get="{% url 'album_view' artist_name=music.artist.name album_name=music.album.name %}"
+                                    hx-target=".content"
+                                    hx-swap="innerHTML swap:0.2s settle:0.2s"
+                                    hx-push-url="true"> 
+                                <span class="material-symbols-outlined">album</span>
+                                Ir al album 
+                            </button>
+                        </div> 
+                    </td>
+                </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" style="text-align: center;"> No hay canciones en esta lista. </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endpartialdef %}
+
+{% partialdef artists %}
+    <div class="body-cards">
+        {% for artist in artists %}
+            <div class="card artist-card">
+                <div class="container-card"
+                    hx-get="{% url 'artist_view' artist_name=artist.name %}"
+                    hx-trigger="click"
+                    hx-target=".content"
+                    hx-push-url="true"
+                    hx-swap="innerHTML swap:0.2s settle:0.2s"
+                    hx-indicator=".loading.main.main">
+
+                    {% if artist.profileImg == '' %}
+                        <i class="fa-regular fa-user icon-user"></i>
+                    {% else %}
+                        <img src="{{ artist.profileImgUrl }}" alt="">
+                    {% endif %}
+                    <p class="name">{{ artist.name }}</p>
+                </div>
+                <button hx-get="{% url 'play_artist' artist_name=artist.name %}" 
+                        hx-target=".songs-queue"
+                        hx-swap="outerHTML"
+                        class="btn-play"> 
+                        <i class="fa-solid fa-play"></i> 
+                </button>
+            </div>
+        {% endfor %}
+    </div>
+{% endpartialdef %}
+
+{% partialdef albums %}
+    <div class="body-cards">
+        {% for album in albums %}
+            <div class="card">
+                <div class="container-card"
+                    hx-get="{% url 'album_view' artist_name=album.artist album_name=album.name %}"
+                    hx-target=".content"
+                    hx-swap="innerHTML swap:0.2s settle:0.2s"
+                    hx-indicator=".loading.main.main"
+                    hx-push-url="true">
+                    <img src="{{ album.imgUrl }}" alt="{{ album.name }}">
+                    <p class="name">{{ album.name }}</p>
+                </div>
+                <button class="btn-play"
+                        hx-get="{% url 'play_album' id=album.id %}" 
+                        hx-target=".songs-queue"
+                        hx-swap="outerHTML">
+                    <i class="fa-solid fa-play"></i> 
+                </button>
+            </div>
+        {% endfor %}
+    </div>
+{% endpartialdef %}
+
+{% partialdef lists %}
+    <div class="body-cards">
+        {% for list in lists %}
+            <div class="card">
+                <div class="container-card"
+                    hx-get="{% url 'view_list' id=list.id %}"
+                    hx-target=".content"
+                    hx-swap="innerHTML swap:0.2s settle:0.2s"
+                    hx-indicator=".loading.main.main"
+                    hx-push-url="true">
+                    
+                    {% if list.getImg == '' %}
+                        <div class="container-img liked-musics">
+                            <span class="material-symbols-outlined"> list </span>
+                        </div>
+
+                    {% else %}
+                        <img src="{{ list.getImg }}" alt="{{ list.name }}">
+                    {% endif %}
+                    <p class="name">{{ list.name }}</p>
+                </div>
+                <button class="btn-play"
+                        hx-get="{% url 'play_list' id=list.id %}" 
+                        hx-target=".songs-queue"
+                        hx-swap="outerHTML">
+                    <i class="fa-solid fa-play"></i> 
+                </button>
+            </div>
+        {% endfor %}
+    </div>
+{% endpartialdef %}
+
+{% partialdef profiles %}
+    <div class="body-cards">
+        {% for profile in profiles %}
+            <div class="card">
+                <div class="container-card"
+                    hx-get="{% url 'profile_view' id=profile.id %}"
+                    hx-target=".content"
+                    hx-swap="innerHTML swap:0.2s settle:0.2s"
+                    hx-indicator=".loading.main.main"
+                    hx-push-url="true">
+                    <img src="{{ profile.profileImgUrl }}" alt="{{ profile.name }}">
+                    <p class="name">{{ profile.name }}</p>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% endpartialdef %}
+
+{% partialdef all %}
+    {% if musics %}
+        <div class="section-search">
+            <h2> Canciones </h2>
+            {% partial songs %}
+        </div>
+    {% endif %}
+
+    {% if artists %}
+        <div class="section-search">
+            <h2> Artistas </h2>
+            {% partial artists %}
+        </div>
+    {% endif %}
+
+    {% if albums %}
+        <div class="section-search">
+            <h2> Albumes </h2>
+            {% partial albums %}
+        </div>
+    {% endif %}
+
+    {% if lists %}
+        <div class="section-search">
+            <h2> Listas </h2>
+            {% partial lists %}
+        </div>
+    {% endif %}
+
+    {% if profiles %}
+        <div class="section-search">
+            <h2> Perfiles </h2>
+            {% partial profiles %}
+        </div>
+    {% endif %}
+
+    
+    {% if not musics and not artists and not albums and not lists and not profiles %}
+        <h2 align="center"> No hay resultados! </h2>
+    {% endif %}
+        
+{% endpartialdef %}
+
+{% partialdef search %}
+    <form class="search-form" autocomplete="off" hx-headers='{ "X-CSRFToken": "{{ csrf_token }}" }'>
+        <div class="search-container">
+            <span class="material-symbols-outlined search-icon"> search </span>
+            <input type="text" name="search" id="search" placeholder="Que quieres reproducir?"
+                    hx-get="{% url 'search' %}"
+                    hx-trigger="keyup changed delay:500ms"
+                    hx-target=".content"
+                    hx-push-url="true"
+                    hx-indicator=".loading.main"
+                   {% if results %} value="{{search}}" {% endif %}>
+        </div>
+    </form>
+
+    {% if results %}
+        <div class="results">
+            <div class="filter">
+                <button class="{% if btnFilter == 'all' %} show {% endif %}"
+                        hx-get="{% url 'search' %}?search={{ search }}"
+                        hx-target=".content"
+                        hx-push-url="true"
+                        hx-indicator=".loading.main"> 
+                            Todo 
+                </button>
+                <button class="{% if btnFilter == 'artists' %} show {% endif %}"
+                        hx-get="{% url 'search' %}?search={{ search }}&filter=artists"
+                        hx-target=".content"
+                        hx-push-url="true"
+                        hx-indicator=".loading.main"> 
+                            Artistas 
+                </button>
+                <button class="{% if btnFilter == 'songs' %} show {% endif %}"
+                        hx-get="{% url 'search' %}?search={{ search }}&filter=songs"
+                        hx-target=".content"
+                        hx-push-url="true"
+                        hx-indicator=".loading.main"> 
+                        Canciones
+                </button>
+                <button class="{% if btnFilter == 'albums' %} show {% endif %}"
+                        hx-get="{% url 'search' %}?search={{ search }}&filter=albums"
+                        hx-target=".content"
+                        hx-push-url="true"
+                        hx-indicator=".loading.main"> 
+                        Albumes 
+                </button>
+                <button class="{% if btnFilter == 'lists' %} show {% endif %}"
+                        hx-get="{% url 'search' %}?search={{ search }}&filter=lists"
+                        hx-target=".content"
+                        hx-push-url="true"
+                        hx-indicator=".loading.main"> 
+                        Listas 
+                </button>
+                <button class="{% if btnFilter == 'profiles' %} show {% endif %}"
+                        hx-get="{% url 'search' %}?search={{ search }}&filter=profiles"
+                        hx-target=".content"
+                        hx-push-url="true"
+                        hx-indicator=".loading.main"> 
+                    Perfiles
+                </button>
+            </div>
+
+            <div class="results-content">
+                {% partial all %}
+            </div>
+        </div> 
+    {% else %}
+        <div class="results">
+            <div class="filter">
+                <button> Todo </button>
+                <button> Artistas </button>
+                <button> Canciones </button>
+                <button> Albumes </button>
+                <button> Listas </button>
+                <button> Perfiles </button>
+            </div>
+        </div>
+    {% endif %}
+        
+{% endpartialdef %}
+
+{% block content %}
+    {% partial search %}
+{% endblock %}

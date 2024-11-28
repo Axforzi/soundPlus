@@ -1,0 +1,201 @@
+{% extends 'layouts/base.html'%}
+
+{% load static %}
+{% load partials %}
+
+{% partialdef index %}
+<section class="popular-artists">
+    <header>
+        <h2>Artistas populares</h2>
+        <button class="btn-more"
+                hx-get="{% url 'section_view' section='artists' %}"
+                hx-target=".content"
+                hx-swap="innerHTML swap:.2s settle:.2s"
+                hx-indicator=".loading.main"
+                hx-push-url="true"> 
+            Mostrar todas 
+        </button>
+    </header>
+
+    <div class="body-cards">
+        <div class="swiper">
+            <div class="swiper-wrapper">
+                {% for artist in artists %}
+                    <div class="swiper-slide">
+                        <div class="card">
+                            <div class="container-card"
+                                hx-get="{% url 'artist_view' artist_name=artist.name %}"
+                                hx-trigger="click"
+                                hx-target=".content"
+                                hx-push-url="true"
+                                hx-swap="innerHTML swap:0.2s settle:0.2s"
+                                hx-indicator=".loading.main.main">
+
+                                {% if artist.profileImg == '' %}
+                                    <i class="fa-regular fa-user icon-user"></i>
+                                {% else %}
+                                    <img src="{{ artist.profileImgUrl }}" alt="">
+                                {% endif %}
+                                <p class="name">{{ artist.name }}</p>
+                            </div>
+                            <button hx-get="{% url 'play_artist' artist_name=artist.name %}" 
+                                    hx-target=".songs-queue"
+                                    hx-swap="outerHTML"
+                                    class="btn-play"> 
+                                    <i class="fa-solid fa-play"></i> 
+                            </button>
+                        </div>
+                    </div>
+                {% empty %}
+                    <h3>No hay artistas disponibles</h3>
+                {% endfor %}
+            </div>
+            <div class="swiper-button-prev"></div>
+            <div class="swiper-button-next"></div>
+        </div>
+    </div>
+</section>
+
+<section class="popular-albums">
+    <header> 
+        <h2>Albumes populares</h2> 
+        <button class="btn-more"
+                hx-get="{% url 'section_view' section='albums' %}"
+                hx-target=".content"
+                hx-swap="innerHTML swap:.2s settle:.2s"
+                hx-indicator=".loading.main"
+                hx-push-url="true"> 
+            Mostrar todas 
+        </button>
+    </header>
+
+    <div class="body-cards">
+        <div class="swiper">
+            <div class="swiper-wrapper">
+                {% for album in albums %}
+                    <div class="swiper-slide">
+                        <div class="card">
+                            <div class="container-card"
+                                hx-get="{% url 'album_view' artist_name=album.artist album_name=album.name %}"
+                                hx-target=".content"
+                                hx-swap="innerHTML swap:0.2s settle:0.2s"
+                                hx-indicator=".loading.main.main"
+                                hx-push-url="true">
+                                <img src="{{ album.imgUrl }}" alt="{{ album.name }}">
+                                <p class="name">{{ album.name }}</p>
+                            </div>
+                            <button class="btn-play"
+                                    hx-get="{% url 'play_album' id=album.id %}" 
+                                    hx-target=".songs-queue"
+                                    hx-swap="outerHTML">
+                                <i class="fa-solid fa-play"></i> 
+                            </button>
+                        </div>
+                    </div>
+                {% empty %}
+                    <h3> No hay albumes disponibles </h3>
+                {% endfor %}
+            </div>
+            <div class="swiper-button-prev"></div>
+            <div class="swiper-button-next"></div>
+        </div>
+    </div>
+</section>
+
+<section class="popular-musics">
+    <header> 
+        <h2>Canciones populares</h2> 
+        <button class="btn-more"
+                hx-get="{% url 'section_view' section='songs' %}"
+                hx-target=".content"
+                hx-swap="innerHTML swap:.2s settle:.2s"
+                hx-indicator=".loading.main"
+                hx-push-url="true"> 
+            Mostrar todas 
+        </button>
+    </header>
+
+    <div class="body-cards">
+        <div class="swiper">
+            <div class="swiper-wrapper">
+                {% for music in musics %}
+                    <div class="swiper-slide">
+                        <div class="card">
+                            <div class="container-card"
+                                {% if music.album.name != "Ninguno" %}
+                                    hx-get="{% url 'album_view' artist_name=music.artist.name album_name=music.album.name  %}"
+                                    hx-target=".content"
+                                    hx-swap="innerHTML swap:0.2s settle:0.2s"
+                                    hx-indicator=".loading.main"
+                                    hx-push-url="true"
+
+                                {% else %}
+                                    hx-get="{% url 'single_view' artist_name=music.artist.name single_name=music.name  %}"
+                                    hx-target=".content"
+                                    hx-swap="innerHTML swap:0.2s settle:0.2s"
+                                    hx-indicator=".loading.main"
+                                    hx-push-url="true"
+                                {% endif %}>
+                                
+                                <img src="{{ music.imgUrl }}" alt="{{ music.name }}">
+                                <p class="name">{{ music.name }}</p>
+                            </div>
+                            <button class="btn-play"
+                                    hx-get="{% url 'play_music' id=music.id %}"
+                                    hx-target=".songs-queue"
+                                    hx-swap="outerHTML"> 
+                                <i class="fa-solid fa-play"></i> 
+                            </button>
+                        </div>
+                    </div>
+                {% empty %}
+                    <h3> No hay canciones disponibles </h3>
+                {% endfor %}
+            </div>
+            <div class="swiper-button-prev"></div>
+            <div class="swiper-button-next"></div>
+        </div>
+    </div>
+</section>
+
+{% if request.htmx %}
+    <script>
+        swiper = new Swiper('.swiper', {
+            loop: true,
+            slidesPerView: 2,
+        
+            // Navigation arrows
+            navigation: {
+            nextEl: '.swiper-button-next',
+            prevEl: '.swiper-button-prev',
+            },
+        
+            breakpoints: {
+                450: {
+                    slidesPerView: 3,
+                },
+                700: {
+                    slidesPerView: 4
+                },
+                800: {
+                    slidesPerView: 6
+                },
+                1000:{
+                    slidesPerView: 4
+                },
+                1200:{
+                    slidesPerView: 5
+                },
+                1280:{
+                    slidesPerView: 6
+                }
+            }
+        });
+    </script>
+{% endif %}
+
+{% endpartialdef %}
+
+{% block content %}
+    {% partial index %}
+{% endblock %}

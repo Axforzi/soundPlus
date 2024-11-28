@@ -1,0 +1,62 @@
+{% extends 'layouts/base.html' %}
+
+{% load static %}
+{% load partials %}
+{% load custom_filters %}
+
+{% partialdef discography %}
+    <div class="discography-container">
+        {% if albums %}
+            <section class="albums discography">
+                <header>
+                    <h1> Albumes </h1>
+                </header>
+
+                <div class="discography-body">
+                    {% for album in albums %}
+                        <div class="discography-card">
+                            <div class="container-cover">
+                                <img src="{{ album.imgUrl }}" alt="{{ album.name }}">
+                            </div>
+                            <div class="container-info">
+                                <h2> {{ album.name }} </h2>
+                                <p> {{ album.year }} </p>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+        {% endif %}
+
+        {% if ep_singles %}
+            <section class="ep-singles discography">
+                <header>
+                    <h1> Sencillos y EP's </h1>
+                </header>
+
+                <div class="discography-body">
+                    {% for ep_single in ep_singles %}
+                        <div class="discography-card">
+                            <div class="container-cover">
+                                <img src="{{ ep_single.img|imgUrl }}" alt="{{ ep_single.name }}">
+                            </div>
+                            <div class="container-info">
+                                <h2> {{ ep_single.name }} </h2>
+                                <p> {{ ep_single.year }} </p>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+        {% endif %}
+
+        {% if not albums and not singles %}
+            <h1 class="not-content"> No hay contenido disponible. </h1>
+        {% endif  %}
+    </div>
+
+{% endpartialdef %}
+
+{% block content %}
+    {% partial discography %}
+{% endblock %}

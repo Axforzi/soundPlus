@@ -1,0 +1,261 @@
+{% extends 'layouts/admin.html' %}
+
+{% load partials %}
+{% load static %}
+
+<!-- MUSIC PARTIALS -->
+{% partialdef newMusic %}
+    <form hx-post="{% url 'management_musics' %}"
+          hx-target="main"
+          hx-swap="innerHTML swap:0.2s sette:0.2s" 
+          class="formMusic"
+          enctype="multipart/form-data" autocomplete="off">
+        <div>{{ FormMusics.name.as_field_group }}</div>
+        <div>
+            <div class="select genre" tabindex="0">
+                <span hx-on:click="htmx.toggleClass('.select.genre', 'select-show')">Generos</span>
+                {{ FormMusics.genre }} 
+            </div>
+        </div>
+        <div>
+            <div class="select album" tabindex="0">
+                <span hx-on:click="htmx.toggleClass('.select.album', 'select-show')">Albumes</span>
+                {{ FormMusics.album }}
+            </div>
+        </div>
+        <div>
+            <label for="{{ FormMusics.song.id_for_label }}">
+                Canción
+                {{ FormMusics.song }}
+            </label>
+        </div>
+        <div>
+            <label for="{{ FormMusics.img.id_for_label }}">
+                Portada
+                {{ FormMusics.img }}
+            </label>
+        </div>
+        <div tabindex="0" class="container-preview">
+            <img src="{% static  'img/albums' %}/{{ albumImg }}" alt="" id="file-preview">
+        </div>
+        <button>Agregar</button>
+    </form>
+{% endpartialdef %}
+
+{% partialdef editMusic %}
+    <form hx-post="{% url 'management_music' id=music.id %}"
+          hx-target="main"
+          hx-swap="innerHTML swap:0.2s settle:0.2s" 
+          class="formMusic"
+          enctype="multipart/form-data" autocomplete="off">
+        <div>{{ FormMusics.name.as_field_group }}</div>
+        <div>
+            <div class="select genre" tabindex="0">
+                <span hx-on:click="htmx.toggleClass('.select.genre', 'select-show')">Generos</span>
+                {{ FormMusics.genre }}
+            </div>
+        </div>
+        <div>
+            <div class="select album" tabindex="0">
+                <span hx-on:click="htmx.toggleClass('.select.album', 'select-show')">{{ music.album }}</span>
+                {{ FormMusics.album }}
+            </div>
+        </div>
+        <div>{{ FormMusics.song.as_field_group }}</div>
+        <div>
+            <label for="{{ FormMusics.img.id_for_label }}">
+                Portada
+                {{ FormMusics.img }}
+            </label>
+        </div>
+        <div tabindex="0" class="container-preview">
+            <img src="{{ music.imgUrl }}" alt="" id="file-preview">
+        </div>
+        <button>Modificar</button>
+        <button hx-get="{% url 'management_music_new' %}" 
+                hx-swap="outerHTML swap:0.2s settle:0.2s" 
+                hx-target=".formMusic" hx-trigger="click">Cancelar</button>
+        
+        <script>
+            element = document.querySelector('input[type="radio"]:checked');
+            element.dispatchEvent(ev);
+        </script>
+    </form>
+{% endpartialdef %}
+
+{% partialdef musics %}
+    {% partial newMusic %}
+    <div class="container-table">
+        <table class="musics">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Portada</th>
+                    <th>Nombre</th>
+                    <th>Album</th>
+                    <th>Genero</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for music in musics %}
+                <tr>
+                    <td> {{ forloop.counter }}</td>
+                    <td> 
+                        {% if music.img != '' %} 
+                            <img src="{{music.imgUrl}} " alt="{{music.name}}"> 
+                        {% else %} 
+                            <img src="{{ music.album.imgUrl }}" alt="{{ music.album.name }}">
+                        {% endif %}
+                    </td>
+                    <td> {{ music.name }} </td>
+                    <td> {{ music.album.name }} </td>
+                    <td>
+                        {% if music.genre_set.all|length != 0 %}
+                            {% for genre in music.genre_set.all %}
+                                <p>{{ genre.name }}</p>
+                            {% endfor %}
+                        {% else %}
+                            <p> Sin generos </p>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="container-btn">
+                            <button class="btn-edit" hx-get="{% url 'management_music_edit' id=music.id %}" hx-swap="outerHTML swap:0.2s settle:0.2s"
+                                hx-target=".formMusic">
+                                Modificar
+                            </button>
+        
+                            <button class="btn-delete" hx-delete="{% url 'management_music' id=music.id %}" hx-swap="innerHTML swap:0.2s settle:0.2s" hx-target="main"
+                                hx-confirm="Desea eliminar este elemento?">
+                                Eliminar
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endpartialdef %}
+
+
+<!-- ALBUM PARTIALS -->
+{% partialdef newAlbum %}
+    <form class="formAlbum" 
+          hx-post="{% url 'management_albums' %}" 
+          hx-swap="innerHTML swap:0.2s settle:0.2s" 
+          hx-target="main" 
+          autocomplete="off" 
+          enctype="multipart/form-data">
+
+        <div>
+            {{ FormAlbums.name.as_field_group }}
+        </div>
+
+        <div class="select album-type" tabindex="0">
+            <span hx-on:click="htmx.toggleClass('.select.album-type', 'select-show')">Tipo de Album</span>
+            {{ FormAlbums.album_type }}
+        </div>
+
+        <div>
+            {{ FormAlbums.img.as_field_group }}
+        </div>
+
+        <div class="container-preview">
+            <img src="{% static  'img/albums' %}/{{ albumImg }}" alt="" id="file-preview">
+        </div>
+        <button>Agregar</button>
+    </form>
+{% endpartialdef %}
+
+{% partialdef editAlbum %}
+    <form class="formAlbum" 
+          hx-post="{% url 'management_album' id=id %}" 
+          hx-swap="innerHTML swap:0.2s settle:0.2s" 
+          hx-target="main"
+          autocomplete="off" 
+          enctype="multipart/form-data">
+
+        <div>
+            {{ FormAlbums.name.as_field_group }}
+        </div>
+
+        <div class="select album-type" tabindex="0">
+            <span hx-on:click="htmx.toggleClass('.select.album-type', 'select-show')">
+                {% if album.album_type == 0 %}
+                    Album
+                {% else %}
+                    EP
+                {% endif %}
+            </span>
+            {{ FormAlbums.album_type }}
+        </div>
+
+        <div>
+            {{ FormAlbums.img.as_field_group }}
+        </div>
+
+        <div class="container-preview">
+            <img src="{{ album.imgUrl }}" alt="" id="file-preview">
+        </div>
+
+        <button>Modificar</button>
+        <button hx-get="{% url 'management_album_new'%}" hx-swap="outerHTML swap:0.2s settle:0.2s" hx-target=".formAlbum">
+            Cancelar
+        </button>
+    </form>
+{% endpartialdef %}
+
+{% partialdef albums %}
+    {% partial newAlbum %}
+    <div class="container-table">
+        <table class="albums">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Portada</th>
+                    <th>Nombre</th>
+                    <th>Tipo de Album</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for album in albums %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td><img src="{{ album.imgUrl }}" alt=""></td>
+                    <td>{{ album.name }}</td>
+                    <td>
+                        {% if album.album_type == 0  %}
+                            Album
+                        {% else %}
+                            EP
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="container-btn">
+                            <button class="btn-edit" hx-get="{% url 'management_album_edit' id=album.id %}" hx-swap="outerHTML swap:0.2s settle:0.2s"
+                                hx-target=".formAlbum">
+                                Modificar
+                            </button>
+                            <button class="btn-delete" hx-delete="{% url 'management_album' id=album.id %}" hx-swap="innerHTML swap:0.2s settle:0.2s" hx-target="main"
+                                hx-confirm="Desea eliminar este elemento?">
+                                Eliminar
+                            </button>
+                            </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endpartialdef %}
+
+{% partialdef not_artist %}
+    <h1> Usted no esta registrado como artista </h1>
+{% endpartialdef %}
+
+{% block content %}
+    {% partial musics %}
+{% endblock %}

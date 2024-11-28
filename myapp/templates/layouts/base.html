@@ -1,0 +1,398 @@
+{% load static %}
+
+{% load custom_filters %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="shortcut icon" href="{% static 'img/favicon.ico' %}" type="image/x-icon">
+    {% block styles %}
+    <link rel="stylesheet" href="{% static 'css/main.css'%}">
+    <link rel="stylesheet" href="{% static 'css/artist.css'%}">
+    <link rel="stylesheet" href="{% static 'css/profile.css' %}">
+    <link rel="stylesheet" href="{% static 'css/list.css' %}">
+    <link rel="stylesheet" href="{% static 'css/discography.css' %}">
+    <link rel="stylesheet" href="{% static 'css/section.css' %}">
+    <link rel="stylesheet" href="{% static 'css/search.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">   
+    <link rel="stylesheet" href="{% static 'js/swiper-bundle.min.css' %}">
+    
+    <!-- RESPONSIVE -->
+    <link rel="stylesheet" href="{% static 'css/responsive.css'%}">
+    {% endblock %}
+    
+
+    <!-- SCRIPTS -->
+    <script src="{% static 'js/swiper-bundle.min.js' %}" defer></script>
+    <script src="{% static 'js/htmx.min.js' %}" defer></script>
+    <script src="{% static 'js/music.js' %}" defer></script>
+    <script src="{% static 'js/main.js' %}" defer></script>
+
+    <title>{% block title %} SoundPlus {% endblock %}</title>
+</head>
+
+<body>
+    <header class="header-nav">
+        <div class="btn-menu">
+            <div class="line"></div>
+            <div class="line"></div>
+            <div class="line"></div>
+        </div>
+        <div class="navigation">
+            <h1 class="logo"> <img src="{% static 'img/logo.png' %}" alt="logo"> </h1>
+            <a hx-get="{% url 'index' %}" hx-trigger="click" hx-target=".content" hx-swap="innerHTML swap:0.2s settle:0.2s"
+                hx-push-url="true" hx-indicator=".loading.main" class="btn-home"><i class="fa-solid fa-house"></i>Inicio</a>
+
+            <a hx-get="{% url 'search' %}" hx-trigger="click" hx-target=".content" hx-swap="innerHTML swap:0.2s settle:0.2s"
+                hx-push-url="true" hx-indicator=".loading.main" class="btn-search"><i class="fa-solid fa-magnifying-glass"></i>Buscar</a>
+        </div>
+
+        <div class="library">
+            <div class="loading library htmx-indicator">
+                <div class="circle"></div>
+                <div class="circle"></div>
+                <div class="circle"></div>
+            </div>
+            <div class="library-header">
+                <h2><i class="fa-solid fa-music"></i> Tu biblioteca</h2>
+                {% if request.user.is_authenticated %}
+                    <button class="new-list" hx-on:click="htmx.toggleClass(htmx.find('.container-list-form'), 'show')"> + </button>
+                {% else %}
+                    <button class="new-list" hx-on:click="htmx.toggleClass(htmx.find('.modal.login'), 'modal-show')"> 
+                        + 
+                    </button>
+                {% endif %}
+            </div>
+            <div class="library-body">
+                {% if request.user.is_authenticated %}
+                    {% if request.user.profile_set.first.liked_musics_set.exists %}
+                        <div class="library-element" id="likes"
+                             hx-get="{% url 'liked_musics' %}"
+                             hx-target=".content"
+                             hx-indicator=".loading.main"
+                             hx-swap="innerHTML swap:0.2s settle:0.2s"
+                             hx-push-url="true">
+                            <div class="preview-img"></div>
+                            <div class="list">
+                                <h2 class="list-title"> Canciones que te gustan </h2>
+                                <div class="info-songs">{{ request.user.profile_set.first.liked_musics_set.first.musics.count }} Canciones</div>
+                            </div>
+                        </div>
+
+                        <div class="container-elements">
+                            {% for element in library_elements %}
+                                {% if element.type == 'list' and element.item_id != None %}
+                                    <div class="library-element" id="list-{{ element.item_id }}" 
+                                            hx-get="{% url 'view_list' id=element.item_id %}"
+                                            hx-target=".content"
+                                            hx-push-url="true"
+                                            hx-indicator=".loading.main"
+                                            hx-swap="innerHTML swap:0.2s settle:0.2s">
+                                        {% if element.img != '' and element.img != None %}
+                                            <div class="preview-img">
+                                                <img src="{{ element.img.url }}" alt="{{ element.name }}">
+                                            </div>
+                                        {% else %}
+                                            <div class="preview-img list-icon"></div>
+                                        {% endif %}
+                                        <div class="list">
+                                            <h2 class="list-title"> {{ element.name }} </h2>
+                                            <div class="info-songs"> Lista · {{ element.item_id|musics_list_count }} Canciones </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+
+                                {% if element.type == 'album' and element.item_id != None %}
+                                    <div class="library-element" id="album-{{ element.item_id }}" 
+                                            hx-get="{% url 'album_view' artist_name=element.item_id|artist_by_album album_name=element.name %}"
+                                            hx-target=".content"
+                                            hx-push-url="true"
+                                            hx-indicator=".loading.main"
+                                            hx-swap="innerHTML swap:0.2s settle:0.2s">
+                                        <div class="preview-img">
+                                            <img src="{{ element.img.url }}" alt="{{ element.name }}">
+                                        </div>
+                                        <div class="list">
+                                            <h2 class="list-title"> {{ element.name }} </h2>
+                                            <div class="info-songs"> Album </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+
+                                {% if element.type == 'artist' and element.item_id != None %}
+                                    <div class="library-element" id="artist-{{ element.item_id }}" 
+                                            hx-get="{% url 'artist_view' artist_name=element.name %}"
+                                            hx-target=".content"
+                                            hx-push-url="true"
+                                            hx-indicator=".loading.main"
+                                            hx-swap="innerHTML swap:0.2s settle:0.2s">
+                                        <div class="preview-img">
+                                            <img src="{{ element.img.url }}" alt="{{ element.name }}">
+                                        </div>
+                                        <div class="list">
+                                            <h2 class="list-title"> {{ element.name }} </h2>
+                                            <div class="info-songs"> Artista </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="library-element" id="likes" style="display: none;"
+                             hx-get="{% url 'liked_musics' %}"
+                             hx-target=".content"
+                             hx-indicator=".loading.main"
+                             hx-swap="innerHTML swap:0.2s settle:0.2s"
+                             hx-push-url="true">
+                            <div class="preview-img"></div>
+                            <div class="list">
+                                <h2 class="list-title"> Canciones que te gustan </h2>
+                                <div class="info-songs"></div>
+                            </div>
+                        </div>
+
+                        <div class="container-elements">
+                            {% for element in library_elements %}
+                                {% if element.type == 'list' and element.item_id != None %}
+                                    <div class="library-element" id="list-{{ element.item_id }}" 
+                                            hx-get="{% url 'view_list' id=element.item_id %}"
+                                            hx-target=".content"
+                                            hx-push-url="true"
+                                            hx-indicator=".loading.main"
+                                            hx-swap="innerHTML swap:0.2s settle:0.2s">
+                                        {% if element.img != '' and element.img != None %}
+                                            <div class="preview-img">
+                                                <img src="{{ element.img.url }}" alt="{{ element.name }}">
+                                            </div>
+                                        {% else %}
+                                            <div class="preview-img list-icon"></div>
+                                        {% endif %}
+                                        <div class="list">
+                                            <h2 class="list-title"> {{ element.name }} </h2>
+                                            <div class="info-songs"> Lista · {{ element.item_id|musics_list_count }} Canciones </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+
+                                {% if element.type == 'album' and element.item_id != None %}
+                                    <div class="library-element" id="album-{{ element.item_id }}" 
+                                            hx-get="{% url 'view_list' id=element.item_id %}"
+                                            hx-target=".content"
+                                            hx-push-url="true"
+                                            hx-indicator=".loading.main"
+                                            hx-swap="innerHTML swap:0.2s settle:0.2s">
+                                        {% if list.getImg != '' %}
+                                            <div class="preview-img">
+                                                <img src="{{ element.img.url }}" alt="{{ element.name }}">
+                                            </div>
+                                        {% else %}
+                                            <div class="preview-img list-icon"></div>
+                                        {% endif %}
+                                        <div class="list">
+                                            <h2 class="list-title"> {{ element.name }} </h2>
+                                            <div class="info-songs"> Album </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+
+                                {% if element.type == 'artist' and element.item_id != None %}
+                                    <div class="library-element" id="artist-{{ element.item_id }}" 
+                                            hx-get="{% url 'artist_view' artist_name=element.name %}"
+                                            hx-target=".content"
+                                            hx-push-url="true"
+                                            hx-indicator=".loading.main"
+                                            hx-swap="innerHTML swap:0.2s settle:0.2s">
+                                        {% if list.getImg != '' %}
+                                            <div class="preview-img">
+                                                <img src="{{ element.img.url }}" alt="{{ element.name }}">
+                                            </div>
+                                        {% else %}
+                                            <div class="preview-img list-icon"></div>
+                                        {% endif %}
+                                        <div class="list">
+                                            <h2 class="list-title"> {{ element.name }} </h2>
+                                            <div class="info-songs"> Artista </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            {% empty %}
+                                <div class="library-element info">
+                                    <h2>Crea tu primera lista</h2>
+                                    <p>Es muy facil te echaremos una mano.</p>
+                                    <button href="" class="btn-primary" hx-on:click="htmx.toggleClass(htmx.find('.container-list-form'), 'show')"> Crear lista </button>
+                                </div>
+
+                                <div class="list-elements"></div>
+                                <div class="artist-elements"></div>
+                                <div class="album-elements"></div>      
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <div class="library-element no-list">
+                        <h2>Crea tu primera lista</h2>
+                        <p>Es muy facil te echaremos una mano.</p>
+
+                        {% if request.user.is_authenticated %}
+                            <button class="btn-primary"> Crear lista </a>
+                        {% else %}
+                            <button class="btn-primary"
+                                    hx-on:click="htmx.toggleClass(htmx.find('.modal.login'), 'modal-show')"> 
+                                Crear lista 
+                            </button>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+
+
+            <div class="footer">
+                <button hx-get="/about"
+                        hx-target=".content"
+                        hx-swap="innerHTML swap:0.2s settle:0.2s"
+                        hx-indicator=".loading.main">
+                        Acerca de
+                </button>
+                {% if request.user.is_authenticated and request.user.artist_set.first.name is None %}
+                    <button hx-get="/create-artist"
+                            hx-target=".content"
+                            hx-swap="innerHTML swap:0.2s settle:0.2s"
+                            hx-indicator=".loading.main"
+                            hx-push-url="true">
+                            Convertirse en artista
+                    </button>
+                {% endif %}
+            </div>
+            {% include 'modal.html#modalNewList' %}
+        </div>
+    </header>
+
+    <main>
+        <header>
+            <div class="container1">
+                <button onclick="window.history.back()"> <i class="fa-solid fa-chevron-left"></i> </a>
+                <button onclick="window.history.forward()"> <i class="fa-solid fa-chevron-right"></i> </a>
+            </div>
+            <div class="btn-menu">
+                <div class="line"></div>
+                <div class="line"></div>
+                <div class="line"></div>
+            </div>
+
+            <div class="container2">
+                {% if request.user.is_authenticated %}
+                    <div class="container-logged">
+                        {% if request.user.profile_set.first.profileImg == '' %}
+                            <i style="padding: 5px 6px;" class="fa-regular fa-user" class="profile-img"></i>
+                        {% else %}
+                            <img src="{{ request.user.profile_set.first.profileImgUrl }}" alt="">
+                        {% endif %}
+                        <div class="options">
+                            <button hx-get="{% url 'my_profile_view' %}" 
+                                    hx-target=".content"
+                                    hx-swap="innerHTML swap:0.2s settle:0.2s"
+                                    hx-indicator=".loading.main"
+                                    hx-push-url="true"
+                                    class="option"> Perfil 
+                            </button>
+                            {% if request.user.artist_set.first is not None %}
+                                <button hx-get="{% url 'artist_account' %}"
+                                        hx-target=".content"
+                                        hx-swap="innerHTML swap:0.2s settle:0.2s"
+                                        hx-indicator=".loading.main"
+                                        hx-push-url="true"
+                                        class="option"> 
+                                        Cuenta de artista 
+                                </button>
+                            {% endif %}
+                            <a href="/logout" class="option"> Cerrar Sesión </a>
+                        </div>
+                    </div>
+                {% else %}
+                    <a href="/signup">Registrarse</a>
+                    <button hx-on:click="htmx.toggleClass('.login', 'modal-show');
+                                        htmx.toggleClass('body', 'hidden-scroll');" class="btn-primary">
+                            Iniciar Sesión </button>
+                {% endif %}
+            </div>
+        </header>
+
+        <div class="content" hx-history="false" hx-history-elt>
+            {% block content %}
+            {% endblock %}
+        </div>
+
+        <div class="loading main htmx-indicator">
+            <div class="circle"></div>
+            <div class="circle"></div>
+            <div class="circle"></div>
+        </div>
+
+        {% include 'modal.html#playQueue' %}
+    </main>
+
+    <div class="player" hx-headers='{ "X-CSRFToken": "{{ csrf_token }}" }'> 
+        <div class="music">
+            <div class="container-img">
+                <img src="" alt="">
+            </div>
+            <div class="info">
+                <p class="name"
+                   hx-get=""
+                   hx-target=".content"
+                   hx-swap="innerHTML swap:0.2s settle:0.2s"
+                   hx-push-url="true"> 
+                   Music 
+                </p>
+                <p class="artist-name" 
+                   hx-get="" 
+                   hx-target=".content"
+                   hx-swap="innerHTML swap:0.2s settle:0.2s"
+                   hx-push-url="true"> 
+                    Artist 
+                </p>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="buttons">
+                <button class="random">
+                    <span class="material-symbols-outlined">shuffle</span>
+                </button>
+                <button class="previus"><span class="material-symbols-outlined">skip_previous</span></button>
+                <button class="play"><span class="material-symbols-outlined">play_arrow</span></button>
+                <button class="next"><span class="material-symbols-outlined">skip_next</span></button>
+                <button class="bucle"><span class="material-symbols-outlined">replay</span></button>
+            </div>
+            <div class="progress">
+                <p class="current-time">00:00</p>
+                <div class="container-cursor">
+                    <input type="range" min="0" value="0" step="0.01">
+                </div>
+                <p class="duration">00:00</p>
+            </div>
+        </div>
+
+        <div class="extra">
+            <button class="btn-queue" onclick="showQueue(event)"><span class="material-symbols-outlined">queue_music</span></button>
+            <div class="btn-volume">
+                <span class="material-symbols-outlined">volume_up</span>
+                <div class="container-cursor">
+                    <input type="range" max="1" min="0" value="1" step="0.01">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if not request.user.is_authenticated %}
+        {% include 'modal.html#modalLogin' %}
+    {% endif %}
+
+    <div class="artist-more"></div>
+</body>
+
+</html>
