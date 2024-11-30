@@ -127,13 +127,10 @@ addEventListener('htmx:afterRequest', (e) => {
 
     // HIDE PLAY QUEUE
     if (e.target.matches('.btn-home') || e.target.matches('.btn-search') || e.target.matches('.library-element') || e.target.matches('.link-artist')) {
-        document.querySelector('.loading.main').style.opacity = '1';
-
         setTimeout(() => {
             document.querySelector('.play-queue').classList.remove('show-play-queue');
             const btnQueue = document.querySelector('.btn-queue span');
             btnQueue.style.color = 'white';
-            document.querySelector('.loading.main').style.opacity = '0';
         }, 300);
     }
 
