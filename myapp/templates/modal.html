@@ -22,7 +22,7 @@
             {% endfor %}
             
             <button class="btn-submit">Iniciar sesión</button>
-            <a href="">¿Se te ha olvidado la contraseña?</a>
+            <!-- <a href="">¿Se te ha olvidado la contraseña?</a> -->
         </form>
 
         <div class="line"></div>
@@ -74,7 +74,7 @@
                     {% if profile.profileImg == '' %}
                         <i class="fa-regular fa-user preview-img"></i>
                     {% else %}
-                        <img src="{{ profile.profileImgUrl }}" class="preview-img">
+                        <img src="{{ profile.profileImg.url }}" class="preview-img">
                     {% endif %}
 
                     <label for="{{ formProfile.profileImg.id_for_label }}">
@@ -113,7 +113,7 @@
                     {% if artist.profileImg == '' %}
                         <i class="fa-regular fa-user preview-img"></i>
                     {% else %}
-                        <img src="{{ artist.profileImgUrl }}" class="preview-img">
+                        <img src="{{ artist.profileImg.url }}" class="preview-img">
                     {% endif %}
 
                     <label for="{{ formProfile.profileImg.id_for_label }}">
@@ -234,7 +234,7 @@
                     <td class="views"> {{ music.views }} </td>
                     <td class="add">
                         {% if request.user.is_authenticated %}
-                            <button class="add-library {% if music|liked_user:request.user %}added{% endif %}"
+                            <button class="add-library {% if music.liked %}added{% endif %}"
                                     hx-post="{% url 'like_music' id=music.id %}">
                                     <span class="material-symbols-outlined">favorite</span>
                             </button>
@@ -255,12 +255,12 @@
                                 Añadir a la lista 
 
                                 <div class="lists">
-                                    {% for list in request.user.profile_set.first.list_set.all %}
+                                    {% for list in lists %}
                                         <button class="btn-add-list"
                                                 hx-post="{% url 'add_to_list' id_list=list.id id_music=music.id %}"
                                                 hx-swap="outerHTML"> 
-                                            <span class="material-symbols-outlined"> 
-                                               {% if music|check_list:list %} close {% else %} add {% endif %}
+                                            <span class="material-symbols-outlined">
+                                               {% if list.id in music.in_list %} close {% else %} add {% endif %}
                                             </span> 
                                             <p class="name"> {{ list.name }} </p> 
                                         </button>
@@ -405,7 +405,7 @@
                 <h2> Desea eliminar esta lista? </h2>
             </header>
             <footer>
-                <button hx-get="{% url 'delete_list' name=nameList %}"> Confirmar </button>
+                <button hx-get="{% url 'delete_list' id=list.id %}"> Confirmar </button>
                 <button hx-on:click="htmx.toggleClass(htmx.find('.confirm-modal'), 'show')"> Cancelar </button>
             </footer>
         </div>

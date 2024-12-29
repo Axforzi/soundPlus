@@ -20,6 +20,6 @@
     }
 }
 
-.container-cards:has(.artist-card) img{
+.container-cards:has(.artist-card) img, .container-cards:has(.artist-card) .container-img{
     border-radius: 100%;
 }

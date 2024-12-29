@@ -6,11 +6,21 @@
 
 {% partialdef album %}
     <div class="title album">
-        <img src="{{ album.imgUrl }}" alt="{{ album.name }}" class="album-img">
+        <div class="container-img">
+            <img data-src="{{ album.img.url }}" 
+                src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" 
+                alt="{{ album.name }}" 
+                class="album-img lazyload">
+        </div>
         <h1>
             <p> {{ album.name }}  </p>
             <span class="info">
-                <img src="{{ artist.profileImgUrl }}" alt="{{ artist.name }}"> 
+                <div class="container-img minimized">
+                    <img class="lazyload"
+                        data-src="{{ artist.profileImg.url }}" 
+                        src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" 
+                        alt="{{ artist.name }}"> 
+                </div>
                 <p> 
                     <span class="artist-link" 
                         hx-get="{% url 'artist_view' artist_name=artist.name %}"
@@ -20,13 +30,16 @@
                         hx-push-url="true"> 
                         {{ artist.name | upper }}  
                     </span> ·
-                    {{ album.music_set.all.count }} Canciones
+                    {{ album.musics_count }} Canciones
                 </p>
             </span> 
         </h1>
         <div class="container-cover">
             <div class="background"></div>
-            <img class="cover-img" src="{{ album.imgUrl }}" alt="{{ album.name }}">
+            <img class="cover-img lazyload" 
+                data-src="{{ album.img.url }}"
+                src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                alt="{{ album.name }}">
         </div>
     </div>
 
@@ -83,7 +96,7 @@
                     <th></th>
                 </thead>
                 <tbody>
-                    {% for music in album.music_set.all %}
+                    {% for music in musics %}
                         <tr class="song" data-id="{{ music.id }}">
                             <td class="play"> 
                                 <div hx-get="{% url 'play_music_album' id=music.id %}"
@@ -107,7 +120,7 @@
                             <td class="views"> {{ music.views }} </td>
                             <td class="add">
                                 {% if request.user.is_authenticated %}
-                                    <button class="add-library {% if music|liked_user:request.user %}added{% endif %}"
+                                    <button class="add-library {% if music.liked %}added{% endif %}"
                                             hx-post="{% url 'like_music' id=music.id %}">
                                             <span class="material-symbols-outlined">favorite</span>
                                     </button>
@@ -128,12 +141,12 @@
                                         Añadir a la lista 
         
                                         <div class="lists">
-                                            {% for list in request.user.profile_set.first.list_set.all %}
+                                            {% for list in lists %}
                                                 <button class="btn-add-list"
                                                         hx-post="{% url 'add_to_list' id_list=list.id id_music=music.id %}"
                                                         hx-swap="outerHTML"> 
                                                     <span class="material-symbols-outlined"> 
-                                                       {% if music|check_list:list %} close {% else %} add {% endif %}
+                                                       {% if list.id in music.in_list %} close {% else %} add {% endif %}
                                                     </span> 
                                                     <p class="name"> {{ list.name }} </p> 
                                                 </button>

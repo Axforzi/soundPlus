@@ -69,7 +69,7 @@
             </div>
             <div class="library-body">
                 {% if request.user.is_authenticated %}
-                    {% if request.user.profile_set.first.liked_musics_set.exists %}
+                    {% if liked_musics_exists %}
                         <div class="library-element" id="likes"
                              hx-get="{% url 'liked_musics' %}"
                              hx-target=".content"
@@ -79,7 +79,7 @@
                             <div class="preview-img"></div>
                             <div class="list">
                                 <h2 class="list-title"> Canciones que te gustan </h2>
-                                <div class="info-songs">{{ request.user.profile_set.first.liked_musics_set.first.musics.count }} Canciones</div>
+                                <div class="info-songs">{{ liked_musics_count }} Canciones</div>
                             </div>
                         </div>
 
@@ -94,14 +94,14 @@
                                             hx-swap="innerHTML swap:0.2s settle:0.2s">
                                         {% if element.img != '' and element.img != None %}
                                             <div class="preview-img">
-                                                <img src="{{ element.img.url }}" alt="{{ element.name }}">
+                                                <img src="{{ element.img }}" alt="{{ element.name }}">
                                             </div>
                                         {% else %}
                                             <div class="preview-img list-icon"></div>
                                         {% endif %}
                                         <div class="list">
                                             <h2 class="list-title"> {{ element.name }} </h2>
-                                            <div class="info-songs"> Lista · {{ element.item_id|musics_list_count }} Canciones </div>
+                                            <div class="info-songs"> Lista · {{ element.musics_count }} Canciones </div>
                                         </div>
                                     </div>
                                 {% endif %}
@@ -114,7 +114,7 @@
                                             hx-indicator=".loading.main"
                                             hx-swap="innerHTML swap:0.2s settle:0.2s">
                                         <div class="preview-img">
-                                            <img src="{{ element.img.url }}" alt="{{ element.name }}">
+                                            <img src="{{ element.img }}" alt="{{ element.name }}">
                                         </div>
                                         <div class="list">
                                             <h2 class="list-title"> {{ element.name }} </h2>
@@ -131,7 +131,7 @@
                                             hx-indicator=".loading.main"
                                             hx-swap="innerHTML swap:0.2s settle:0.2s">
                                         <div class="preview-img">
-                                            <img src="{{ element.img.url }}" alt="{{ element.name }}">
+                                            <img src="{{ element.img }}" alt="{{ element.name }}">
                                         </div>
                                         <div class="list">
                                             <h2 class="list-title"> {{ element.name }} </h2>
@@ -166,28 +166,34 @@
                                             hx-swap="innerHTML swap:0.2s settle:0.2s">
                                         {% if element.img != '' and element.img != None %}
                                             <div class="preview-img">
-                                                <img src="{{ element.img.url }}" alt="{{ element.name }}">
+                                                <img class="lazyload"
+                                                    data-src="{{ element.img }}"
+                                                    src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" 
+                                                    alt="{{ element.name }}">
                                             </div>
                                         {% else %}
                                             <div class="preview-img list-icon"></div>
                                         {% endif %}
                                         <div class="list">
                                             <h2 class="list-title"> {{ element.name }} </h2>
-                                            <div class="info-songs"> Lista · {{ element.item_id|musics_list_count }} Canciones </div>
+                                            <div class="info-songs"> Lista · {{ element.musics_count }} Canciones </div>
                                         </div>
                                     </div>
                                 {% endif %}
 
                                 {% if element.type == 'album' and element.item_id != None %}
                                     <div class="library-element" id="album-{{ element.item_id }}" 
-                                            hx-get="{% url 'view_list' id=element.item_id %}"
+                                            hx-get="{% url 'album_view' artist_name=element.artist_name album_name=element.name %}"
                                             hx-target=".content"
                                             hx-push-url="true"
                                             hx-indicator=".loading.main"
                                             hx-swap="innerHTML swap:0.2s settle:0.2s">
-                                        {% if list.getImg != '' %}
+                                        {% if list.img != '' %}
                                             <div class="preview-img">
-                                                <img src="{{ element.img.url }}" alt="{{ element.name }}">
+                                                <img class="lazyload"
+                                                    data-src="{{ element.img }}" 
+                                                    src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" 
+                                                    alt="{{ element.name }}">
                                             </div>
                                         {% else %}
                                             <div class="preview-img list-icon"></div>
@@ -206,9 +212,12 @@
                                             hx-push-url="true"
                                             hx-indicator=".loading.main"
                                             hx-swap="innerHTML swap:0.2s settle:0.2s">
-                                        {% if list.getImg != '' %}
+                                        {% if list.img != '' %}
                                             <div class="preview-img">
-                                                <img src="{{ element.img.url }}" alt="{{ element.name }}">
+                                                <img class="lazyload"
+                                                    data-src="{{ element.img }}" 
+                                                    src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" 
+                                                    alt="{{ element.name }}">
                                             </div>
                                         {% else %}
                                             <div class="preview-img list-icon"></div>
@@ -257,7 +266,7 @@
                         hx-indicator=".loading.main">
                         Acerca de
                 </button>
-                {% if request.user.is_authenticated and request.user.artist_set.first.name is None %}
+                {% if request.user.is_authenticated and artist_profile is None %}
                     <button hx-get="/create-artist"
                             hx-target=".content"
                             hx-swap="innerHTML swap:0.2s settle:0.2s"
@@ -286,10 +295,10 @@
             <div class="container2">
                 {% if request.user.is_authenticated %}
                     <div class="container-logged">
-                        {% if request.user.profile_set.first.profileImg == '' %}
+                        {% if profile.profileImg == '' or profile.profileImg is None %}
                             <i style="padding: 5px 6px;" class="fa-regular fa-user" class="profile-img"></i>
                         {% else %}
-                            <img src="{{ request.user.profile_set.first.profileImgUrl }}" alt="">
+                            <img src="{{ profile.profileImg.url }}" alt="">
                         {% endif %}
                         <div class="options">
                             <button hx-get="{% url 'my_profile_view' %}" 
@@ -299,7 +308,7 @@
                                     hx-push-url="true"
                                     class="option"> Perfil 
                             </button>
-                            {% if request.user.artist_set.first is not None %}
+                            {% if artist_profile is not None %}
                                 <button hx-get="{% url 'artist_account' %}"
                                         hx-target=".content"
                                         hx-swap="innerHTML swap:0.2s settle:0.2s"
@@ -393,6 +402,8 @@
     {% endif %}
 
     <div class="artist-more"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lazysizes/5.3.2/lazysizes.min.js" async></script>
 </body>
 
 </html>

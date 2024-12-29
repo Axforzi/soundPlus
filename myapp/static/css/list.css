@@ -57,6 +57,60 @@
         }
     }
 
+    .container-img.liked-musics{
+        background: rgba(36, 36, 36, 0.945);
+        background: linear-gradient(110deg, rgba(36, 36, 36, 0.945), rgba(54, 54, 54, 0.945), rgba(36, 36, 36, 0.945));
+        background-size: 200% 100%;
+        animation: 1.5s waves linear infinite;
+    }
+
+    .container-img.liked-musics:has(.lazyloaded){
+        background: none;
+        transition: background 1s ease;
+        transition-delay: 3s;
+    }
+    .container-img.liked-musics{
+        img{
+            transition: opacity 1s ease;
+        }
+        img.lazyload, img.lazyloading {
+            opacity: 0;
+        } 
+        img.lazyloaded {
+            opacity: 1;
+            background: none;
+        }
+    }
+    .container-img.liked-musics:not(:has(img)){
+        background: linear-gradient(345deg, rgba(137, 208, 255, 0.76) 0%, rgba(162, 45, 253, 1) 100%);
+    }
+
+    .container-img.minimized{
+        height: 30px;
+        background: rgba(36, 36, 36, 0.945);
+        background: linear-gradient(110deg, rgba(36, 36, 36, 0.945), rgba(54, 54, 54, 0.945), rgba(36, 36, 36, 0.945));
+        border-radius: 100%;
+        background-size: 200% 100%;
+        animation: 1.5s waves linear infinite;
+    }
+    .container-img.minimized:has(img.lazyloaded){
+        background: none;
+        transition: background 1s ease;
+        transition-delay: 3s;
+    }
+    .container-img.minimized{
+        img{
+            transition: opacity 1s ease;
+        }
+        img.lazyload, img.lazyloading {
+            opacity: 0;
+        } 
+        img.lazyloaded {
+            opacity: 1;
+            background: none;
+        }
+    }
+
     .icon-user{
         opacity: 0;
     }
@@ -470,6 +524,7 @@ main .content .list-container{
     justify-content: start;
     padding: 0;
     overflow: hidden;
+    border-radius: 0;
 
     h1{
         display: flex;
@@ -546,6 +601,35 @@ main .content .list-container{
         height: 100%;
         width: 100%;
     }
+
+    .container-coverimg{
+        img{
+            transition: opacity 1s ease;
+        }
+
+        img.lazyload, img.lazyloading {
+            opacity: 0;
+        } 
+        img.lazyloaded {
+            opacity: 1;
+            background: none;
+        }
+    }
+}
+.title.list-title:not(:has(.container-coverimg)){
+    background: none;
+}
+
+.title.list-title:has(.container-coverimg){
+    background: rgba(36, 36, 36, 0.945);
+    background: linear-gradient(110deg, rgba(36, 36, 36, 0.945), rgba(54, 54, 54, 0.945), rgba(36, 36, 36, 0.945));
+    background-size: 200% 100%;
+    animation: 1.5s waves linear infinite;
+    transition: background 1s ease;
+}
+
+.title.list-title:has(.container-coverimg img.lazyloaded){
+    background: none;
 }
 
 .confirm-modal, .edit-list-modal{

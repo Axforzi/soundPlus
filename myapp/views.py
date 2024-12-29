@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect, get_object_or_404, get_list_or_404 
 from django.http import HttpResponse, StreamingHttpResponse
 from .form import FormLogin, FormSignup, FormAlbums, FormMusics, FormEditProfile, FormEditArtistAccount
 from django.contrib.auth import authenticate, login, logout, get_user_model
@@ -6,19 +6,25 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Value
 from .models import Album, Artist, Music, Profile, Liked_musics, Liked_albums, Liked_lists, Followed_artists, List
-from django.db.models import F, Count, Q, Subquery, OuterRef
-from django.db.models.functions import Coalesce
-from django.db.models.functions import ExtractYear
+from django.db.models import F, Count, Q, Subquery, OuterRef, Exists, CharField
+from django.contrib.postgres.aggregates import ArrayAgg
+from django.db.models.functions import Coalesce, ExtractYear, Cast
+from django.db import transaction
 from django.utils.cache import add_never_cache_headers
 import os
+import math
+from random import shuffle
+from mutagen import File as MutaFile
 import requests
 from itertools import chain
 from django.conf import settings
 from django.http import Http404
+from django.core.files.storage import default_storage
 from django.views.static import serve
 
 def get_library(request) -> dict:
     profile = request.user.profile_set.first()
+    artist = request.user.artist_set.first()
     
     liked_albums = (
         Liked_albums.objects.filter(profile=profile)
@@ -27,9 +33,10 @@ def get_library(request) -> dict:
             name=F('albums__name'),
             img=F('albums__img'),
             added_at=F('la_albums__created_at'),
-            type=Value('album')
+            type=Value('album'),
+            artist_name = F('albums__artist__name')
         )
-        .values('item_id', 'name', 'img', 'type', 'added_at')
+        .values('item_id', 'name', 'img', 'type', 'added_at', 'artist_name')
         .exclude(item_id=None)
     )
     
@@ -40,9 +47,10 @@ def get_library(request) -> dict:
             name=F('artists__name'),
             img=F('artists__profileImg'),
             added_at=F('fa_artist__created_at'),
-            type=Value('artist')
+            type=Value('artist'),
+            musics_count=Value('')
         )
-        .values('item_id', 'name', 'img', 'type', 'added_at')
+        .values('item_id', 'name', 'img', 'type', 'added_at', 'musics_count')
         .exclude(item_id=None)
     )
     
@@ -52,13 +60,14 @@ def get_library(request) -> dict:
             item_id=F('id'),
             list_name=F('name'),
             img=Coalesce(
-                Subquery(Music.objects.filter(list=OuterRef('item_id'), img__isnull=False).values('img').exclude(img__exact='')[:1]),
+                Subquery(Music.objects.filter(list=OuterRef('item_id'), img__isnull=False).order_by('l_musics__created_at').values('img').exclude(img__exact='')[:1]),
                 Subquery(Album.objects.filter(music__list=OuterRef('item_id')).values('img')[:1])
             ),
             added_at=F('created_at'),
-            type=Value('list')
+            type=Value('list'),
+            musics_count=Cast(Count('musics'), output_field=CharField())
         )
-        .values('item_id', 'list_name', 'img', 'type', 'added_at')
+        .values('item_id', 'list_name', 'img', 'type', 'added_at', 'musics_count')
         .exclude(item_id=None)
     )
     
@@ -72,41 +81,67 @@ def get_library(request) -> dict:
                 Subquery(Album.objects.filter(music__list=OuterRef('item_id')).values('img')[:1])
             ),
             added_at=F('l_list__created_at'),
-            type=Value('list')
+            type=Value('list'),
+            musics_count=Value('')
         )
-        .values('item_id', 'list_name', 'img', 'type', 'added_at')
+        .values('item_id', 'list_name', 'img', 'type', 'added_at', 'musics_count')
         .exclude(item_id=None)
     )
     
-    combined_query = liked_albums.union(follow_artist, list_objects, liked_lists).order_by('-added_at')
-    return {'library_elements': combined_query}
+    combined_query = list(liked_albums.union(follow_artist, list_objects, liked_lists).order_by('-added_at'))
+    
+    # GET URL IMG'S
+    for obj in combined_query:
+        if obj['img'] is not None:
+            obj['img'] = default_storage.url(obj['img'])
+    
+    liked_musics = Liked_musics.objects.filter(profile=profile)
+    liked_musics_count = liked_musics.first().musics.count() if liked_musics.exists() else 0
+    
+    liked_musics_exists = liked_musics.exists()
+    return {
+            'library_elements': combined_query, 
+            'liked_musics_exists': liked_musics_exists,
+            'liked_musics_count': liked_musics_count,
+            'profile': profile,
+            'artist_profile': artist
+    }
 
 
 def index(request):
     if request.htmx:
+        albums = Album.objects.exclude(name='Ninguno').select_related('artist')[:10]
+        musics = Music.objects.select_related('album', 'artist')[:10]
+        
         context = {
-            "artists": Artist.objects.all(),
-            "albums": Album.objects.all().exclude(name='Ninguno'),
-            "musics": Music.objects.all(),
+            "artists": Artist.objects.all()[:10],
+            "albums": albums,
+            "musics": musics,
         }
         return render(request, "index.html#index", context)
     else:
         if request.user.is_authenticated:
+            albums = Album.objects.exclude(name='Ninguno').select_related('artist')[:10]
+            musics = Music.objects.select_related('album', 'artist')[:10]
+            
             context = {
                 "login": FormLogin,
-                "artists": Artist.objects.all(),
-                "albums": Album.objects.all().exclude(name='Ninguno'),
-                "musics": Music.objects.all()
+                "artists": Artist.objects.all()[:10],
+                "albums": albums,
+                "musics": musics
             }
             context.update(get_library(request))
             return render(request, "index.html", context)
         
         else:
+            albums = Album.objects.exclude(name='Ninguno').select_related('artist')[:10]
+            musics = Music.objects.select_related('album', 'artist')[:10]
+            
             context = {
                 "login": FormLogin,
-                "artists": Artist.objects.all(),
-                "albums": Album.objects.all().exclude(name='Ninguno'),
-                "musics": Music.objects.all()
+                "artists": Artist.objects.all()[:10],
+                "albums": albums,
+                "musics": musics
             }
             return render(request, "index.html", context)
             
@@ -185,15 +220,31 @@ def logout_view(request):
 
 def profile_view(request, id):
     if request.htmx:
-        profile = Profile.objects.filter(id=id).first()
-        lists = List.objects.filter(profile=profile)
+        profile = Profile.objects.filter(id=id).prefetch_related('lists').get()
+        lists = (profile.lists.prefetch_related('musics')
+                 .annotate(
+                     list_img=Coalesce(
+                        Subquery(Music.objects.filter(list=OuterRef('id'), img__isnull=False).values('img').exclude(img__exact='')[:1]),
+                        Subquery(Album.objects.filter(music__list=OuterRef('id')).values('img')[:1]))
+                     )
+                 .all())
+        lists = list(lists.values())
+        for obj in lists:
+            if obj['list_img'] is not None:
+                obj['list_img'] = default_storage.url(obj['list_img'])
         
         context = {'profile': profile,
                    'lists': lists}
         return render(request, "pages/profile.html#profile", context)
     else:
-        profile = Profile.objects.filter(id=id).first()
-        lists = List.objects.filter(profile=profile)
+        profile = Profile.objects.filter(id=id).prefetch_related('lists').get()
+        lists = (profile.lists.prefetch_related('musics')
+                 .annotate(
+                     list_img=Coalesce(
+                        Subquery(Music.objects.filter(list=OuterRef('id'), img__isnull=False).values('img').exclude(img__exact='')[:1]),
+                        Subquery(Album.objects.filter(music__list=OuterRef('id')).values('img')[:1]))
+                     )
+                 .all())
         
         context = {'profile': profile,
                    'lists': lists}
@@ -202,35 +253,46 @@ def profile_view(request, id):
 
 @login_required    
 def myprofile_view(request):
-    if request.htmx:
-        profile = request.user.profile_set.first()
-        form = FormEditProfile(instance=profile)
-        lists = List.objects.filter(profile=profile)
+    profile = request.user.profile_set.first()
+    form = FormEditProfile(instance=profile)
+    lists = (profile.lists.prefetch_related('musics')
+                .annotate(
+                    list_img=Coalesce(
+                    Subquery(Music.objects.filter(list=OuterRef('id'), img__isnull=False).values('img').exclude(img__exact='')[:1]),
+                    Subquery(Album.objects.filter(music__list=OuterRef('id')).values('img')[:1]))
+                    )
+                .all())
+    lists = list(lists.values())
+    for obj in lists:
+        if obj['list_img'] is not None:
+            obj['list_img'] = default_storage.url(obj['list_img'])
         
-        context = {'formProfile': form,
-                   'profile': profile,
-                   'lists': lists}
+    context = {'formProfile': form,
+                'profile': profile,
+                'lists': lists}
+        
+    if request.htmx:
         return render(request, "pages/profile.html#profile", context)
     else:
-        profile = request.user.profile_set.first()
-        form = FormEditProfile(instance=profile)
-        lists = List.objects.filter(profile=profile)
-        
-        context = {'formProfile': form, 
-                   'profile': profile,
-                   'lists': lists}
         context.update(get_library(request))
         return render(request, "pages/profile.html", context)
     
 @login_required
 def profile_save(request):
     if request.method == "POST":
-        profile = request.user.profile_set.first()
+        profile = request.user.profile_set.prefetch_related('lists').first()
+        list_objects = (profile.lists.prefetch_related('musics')
+                        .annotate(
+                            list_img=Coalesce(
+                                Subquery(Music.objects.filter(list=OuterRef('id'), img__isnull=False).values('img').exclude(img__exact='')[:1]),
+                                Subquery(Album.objects.filter(music__list=OuterRef('id')).values('img')[:1]))
+                            )
+                        .all())
         form = FormEditProfile(request.POST, request.FILES, instance=profile)
         if form.is_valid():
             form.save()
 
-            return render(request, "pages/profile.html#profile", { 'formProfile': form, 'profile': profile, "updateHeader": True })
+            return render(request, "pages/profile.html#profile", { 'formProfile': form, 'profile': profile, "updateHeader": True, "lists": list_objects})
 
 @login_required
 def create_artist(request):
@@ -248,41 +310,68 @@ def create_artist(request):
             return render(request, 'pages/create-artist.html#form', { 'formProfile': form })
     else:
         if request.htmx:
-            return render(request, 'pages/create-artist.html#page', { 'formProfile': FormEditArtistAccount})
+            context = { 'formProfile': FormEditArtistAccount }
+            context.update(get_library(request))
+            return render(request, 'pages/create-artist.html#page', context)
         else:
-            context = {
-                'login': FormLogin,
-                'formProfile': FormEditArtistAccount
-            }
+            context = {'login': FormLogin, 'formProfile': FormEditArtistAccount}
+            context.update(get_library(request))
             return render(request, 'pages/create-artist.html', context)
 
 @login_required
 def artist_account_view(request):
     if request.htmx:
+        profile = request.user.profile_set.prefetch_related('lists').first()
         artist = request.user.artist_set.first()
+        
         form = FormEditArtistAccount(instance=artist)
-        musics = Music.objects.filter(artist=artist).order_by('-views')
-        likedMusics = Music.objects.filter(artist=artist).annotate(likes=Count('liked_musics')).order_by('-likes')
-        albums = Album.objects.filter(artist=artist).exclude(name='Ninguno').annotate(likes=Count('liked_albums')).order_by('-likes')
+        
+        list_musics = profile.lists.all()
+        list_query = List.objects.filter(profile=profile, musics=OuterRef('pk')).values('id') # VERIFY IN LIST
+        liked_query = Liked_musics.objects.filter(profile=profile, musics=OuterRef('pk')) # VERIFY LIKE
+        musics = (Music.objects.filter(artist=artist)
+                  .annotate(
+                      liked=Exists(liked_query),
+                      in_list=Subquery(list_query)
+                  )
+                  .select_related('album')
+                  .order_by('-views'))
+        
+        likedMusics = musics.annotate(likes=Count('liked_musics')).order_by('-likes')
+        albums = Album.objects.filter(artist=artist).exclude(name='Ninguno').select_related('artist').annotate(likes=Count('liked_albums')).order_by('-likes')
         
         context = { 'formProfile': form, 
                     'artist': artist,
                     'musics': musics,
                     "likedMusics": likedMusics,
-                    "albums": albums}
+                    "albums": albums,
+                    "lists_musics": list_musics}
         return render(request, "pages/artist-account.html#profile", context)
     else:
+        profile = request.user.profile_set.first()
         artist = request.user.artist_set.first()
+        
         form = FormEditArtistAccount(instance=artist)
-        musics = Music.objects.filter(artist=artist).order_by('-views')
-        likedMusics = Music.objects.filter(artist=artist).annotate(likes=Count('liked_musics')).order_by('-likes')
-        albums = Album.objects.filter(artist=artist).exclude(name='Ninguno').annotate(likes=Count('liked_albums')).order_by('-likes')
+        
+        list_musics = List.objects.filter(profile=profile).values('id', 'name')
+        list_query = List.objects.filter(profile=profile, musics=OuterRef('pk')).values('id') # VERIFY IN LIST
+        liked_query = Liked_musics.objects.filter(profile=profile, musics=OuterRef('pk')) # VERIFY LIKE
+        musics = (Music.objects.filter(artist=artist)
+                  .annotate(
+                      liked=Exists(liked_query),
+                      in_list=Subquery(list_query)
+                  )
+                  .select_related('album')
+                  .order_by('-views'))
+        likedMusics = musics.annotate(likes=Count('liked_musics')).order_by('-likes')
+        albums = Album.objects.filter(artist=artist).exclude(name='Ninguno').select_related('artist').annotate(likes=Count('liked_albums')).order_by('-likes')
         
         context = { 'formProfile': form, 
                     'artist': artist,
                     'musics': musics,
                     "likedMusics": likedMusics,
-                    "albums": albums}
+                    "albums": albums,
+                    "lists_musics": list_musics}
         context.update(get_library(request))
         return render(request, "pages/artist-account.html", context)
 
@@ -302,12 +391,22 @@ def artist_account_save(request):
             return render(request, "pages/artist-account.html#profile", context)
 
 def artist_view(request, artist_name):
+    profile = request.user.profile_set.prefetch_related('lists').first()
     context = {}
     
     # GET DATA
     try:
         artist = get_object_or_404(Artist, name = artist_name)
-        artist_music = artist.music_set.all().order_by('-views')[:5]
+        
+        # GET MUSICS LIKE AND IN LIST
+        liked_musics = Liked_musics.objects.filter(profile=profile, musics=OuterRef('pk'))
+        artist_music = (artist.music_set
+                        .annotate(
+                            liked=Exists(liked_musics),
+                            in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                        )
+                        .select_related('album')
+                        .order_by('-views').all()[:5])
         artist_albums = artist.album_set.filter(album_type=0).all().order_by('-created_at')
         
         # GET EP's AND SINGLES
@@ -315,11 +414,17 @@ def artist_view(request, artist_name):
         artist_singles = artist.music_set.filter(album__name='Ninguno').all().values('name', 'img', 'created_at', artist_name=F('artist__name')).annotate(model_type=Value('Music'))
         artist_ep_singles = artist_singles.union(artist_ep).order_by('-created_at')
         
+        for obj in artist_ep_singles:
+            if obj['img'] is not None:
+                obj['img'] = default_storage.url(obj['img'])
+        
+        list_objects = profile.lists.all()
         context.update({
                 'artist': artist,
                 'artist_music': artist_music,
                 'artist_albums': artist_albums,
-                'artist_ep_singles': artist_ep_singles
+                'artist_ep_singles': artist_ep_singles,
+                'lists': list_objects
         })
     except Http404:
         if request.htmx:
@@ -336,7 +441,6 @@ def artist_view(request, artist_name):
     if request.htmx:
         if request.user.is_authenticated:
             # CHECK FOLLOW
-            profile = request.user.profile_set.first()
             follow_exist = Followed_artists.objects.filter(profile=profile, artists=artist).exists()
             context.update({'follow': follow_exist})
         
@@ -344,8 +448,6 @@ def artist_view(request, artist_name):
         return render(request, "pages/artist.html#artist-content", context)
     else:
         if request.user.is_authenticated: 
-            profile = request.user.profile_set.first()
-            
             # CHECK FOLLOW
             follow_exist = Followed_artists.objects.filter(profile=profile, artists=artist).exists()
             context.update({ 'follow': follow_exist })
@@ -358,15 +460,28 @@ def artist_view(request, artist_name):
         return render(request, "pages/artist.html", context)
     
 def album_view(request, artist_name, album_name):
+    profile = request.user.profile_set.prefetch_related('lists').first()
     context = {}
     
     # GET DATA OR ERROR
     try:
-        artist = get_object_or_404(Artist, name = artist_name)
-        album = get_object_or_404(Album, artist = artist, name = album_name)
+        artist = get_object_or_404(Artist, name=artist_name)
+        album = get_object_or_404(Album.objects.prefetch_related('music_set').annotate(musics_count=Count('music')), artist=artist, name=album_name)
+        
+        liked_music = Liked_musics.objects.filter(profile=profile, musics=OuterRef('pk'))
+        list_music = List.objects.filter(profile=profile, musics=OuterRef('pk')).values('id')
+        musics = (album.music_set.select_related('artist')
+                  .annotate(liked=Exists(liked_music),
+                            in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                  )
+                  .all().order_by('-views'))
+        
+        list_objects = profile.lists.all()
         context.update({ 
-                            'artist': artist, 
-                            'album': album, 
+            'artist': artist, 
+            'album': album,
+            'musics': musics,
+            'lists': list_objects
         })
     except Http404:
         if request.htmx:
@@ -382,7 +497,6 @@ def album_view(request, artist_name, album_name):
     if request.htmx:
         # CHECK LIKE
         if request.user.is_authenticated:
-            profile = request.user.profile_set.first()
             like_exist = Liked_albums.objects.filter(profile=profile, albums=album).exists()
             context.update({ 'liked': like_exist})
             
@@ -391,7 +505,6 @@ def album_view(request, artist_name, album_name):
     else:
         # CHECK LIKE 
         if request.user.is_authenticated:
-            profile = request.user.profile_set.first()
             like_exist = Liked_albums.objects.filter(profile=profile, albums=album).exists()
             context.update({ 'liked': like_exist})
             context.update(get_library(request))
@@ -402,14 +515,20 @@ def album_view(request, artist_name, album_name):
         
         
 def single_view(request, artist_name, single_name):
+    profile = request.user.profile_set.prefetch_related('lists').first()
+    liked_musics = Liked_musics.objects.filter(profile=profile, musics=OuterRef('pk'))
     context = {}
     
     try:
         artist = get_object_or_404(Artist, name = artist_name)
-        music = get_object_or_404(Music, artist=artist, name = single_name)
+        music = get_object_or_404(Music.objects.annotate(
+                                    liked=Exists(liked_musics),
+                                    in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)), 
+                                  artist=artist, name = single_name)
         context.update({
             'artist': artist,
-            'music': music
+            'music': music,
+            'lists': profile.lists.all()
         })
     except Http404:
         if request.htmx:
@@ -439,12 +558,16 @@ def discography_view(request, artist_name):
     # GET DATA
     try:
         artist = get_object_or_404(Artist, name = artist_name)
-        albums = artist.album_set.exclude(album_type=1).annotate(year=ExtractYear('created_at')).order_by('-created_at')
+        albums = artist.album_set.exclude(album_type=1).select_related('artist').annotate(year=ExtractYear('created_at')).order_by('-created_at')
         
         # GET EP's AND SINGLES
         artist_ep = artist.album_set.filter(album_type=1).all().values('name', 'img', 'created_at', artist_name=F('artist__name')).annotate(model_type=Value('Album'), year=ExtractYear('created_at'))
         artist_singles = artist.music_set.filter(album__name='Ninguno').all().values('name', 'img', 'created_at', artist_name=F('artist__name')).annotate(model_type=Value('Music'), year=ExtractYear('created_at'))
         ep_singles = artist_singles.union(artist_ep).order_by('-created_at')
+        
+        for obj in ep_singles:
+            if obj['img'] is not None:
+                obj['img'] = default_storage.url(obj['img'])
         
         context.update({
             'artist': artist, 
@@ -485,12 +608,12 @@ def section_view(request, section):
                     'section': section }
     
     elif section == 'albums':
-        albums = Album.objects.exclude(name='Ninguno').annotate(likes=Count('liked_albums')).order_by('-likes')
+        albums = Album.objects.exclude(name='Ninguno').select_related('artist').annotate(likes=Count('liked_albums')).order_by('-likes')
         context = {'objects': albums,
                     'section': section }
     
     elif section == 'songs':
-        musics = Music.objects.order_by('-views')
+        musics = Music.objects.select_related('album', 'artist').order_by('-views')
         context = {'objects': musics,
                     'section': section }
     else:
@@ -513,218 +636,408 @@ def section_view(request, section):
         
     
 def play_album(request, id):
+    profile = request.user.profile_set.prefetch_related('lists').first()
+    list_objects = profile.lists.all()
+    liked_musics = Liked_musics.objects.filter(profile=profile, musics=OuterRef('pk'))
     context = {}
+    
     if request.htmx:
         currentMusic =  request.GET.get('currentMusic', None)
         if 'random' in request.GET:
-            music = Music.objects.filter(id=currentMusic)
-            musics_albums = Album.objects.filter(id=id).first().music_set.all().exclude(pk__in=music).order_by('?')
+            music = (Music.objects.filter(id=currentMusic)
+                     .select_related('album', 'artist')
+                     .annotate(
+                         liked=Exists(liked_musics),
+                         in_list=ArrayAgg('list__id', filter=Q(list__profile=profile))
+                     ))
+            musics_albums = (Music.objects.filter(album__id=id).exclude(pk__in=music)
+                             .select_related('album', 'artist')
+                             .annotate(
+                                 liked=Exists(liked_musics),
+                                 in_list=ArrayAgg('list__id', filter=Q(list__profile=profile))
+                             )
+                             .order_by('?'))
             
             if musics_albums.exists():
                 musics = list(chain(music, musics_albums))
-                context.update({ 'musics_queue': musics, 'is_album': id, 'random': True })
+                context.update({ 'musics_queue': musics, 'is_album': id, 'random': True , 'lists': list_objects })
             else:
-                context.update({ 'musics_queue': music, 'is_album': id, 'random': True })
+                context.update({ 'musics_queue': music, 'is_album': id, 'random': True, 'lists': list_objects })
                 
         else:
-            music = Music.objects.filter(id=currentMusic)
-            musics_albums = Album.objects.filter(id=id).first().music_set.exclude(pk__in=music).all()
+            music = (Music.objects.filter(id=currentMusic)
+                     .select_related('album', 'artist')
+                     .annotate(
+                         liked=Exists(liked_musics),
+                         in_list=ArrayAgg('list__id', filter=Q(list__profile=profile))
+                     ))
+            musics_albums = (Music.objects.filter(album__id=id).exclude(pk__in=music)
+                             .select_related('album', 'artist')
+                             .annotate(
+                                 liked=Exists(liked_musics),
+                                 in_list=ArrayAgg('list__id', filter=Q(list__profile=profile))
+                             )
+                             .order_by('?'))
             
             if musics_albums.exists():
                 musics = list(chain(music, musics_albums))
-                context.update({ 'musics_queue': musics, 'is_album': id })
+                context.update({ 'musics_queue': musics, 'is_album': id, 'lists': list_objects })
             else:
-                context.update({ 'musics_queue': music, 'is_album': id })
+                context.update({ 'musics_queue': music, 'is_album': id, 'lists': list_objects })
                 
             
         return render(request, 'modal.html#tableSongs', context)
 
 def play_artist(request, artist_name):
+    profile = request.user.profile_set.prefetch_related('lists').first()
+    list_objects = profile.lists.all()
+    liked_musics = Liked_musics.objects.filter(profile=profile, musics=OuterRef('pk'))
     context = {}
     
     if request.htmx:
         currentMusic = request.GET.get('currentMusic', None)
         if 'random' in request.GET:
-            music = Music.objects.filter(id=currentMusic)
-            musics_artist = Artist.objects.filter(name=artist_name).first().music_set.all().exclude(pk__in=music).order_by('?')
+            music = (Music.objects.filter(id=currentMusic).select_related('album', 'artist')
+                     .annotate(
+                         liked=Exists(liked_musics),
+                         in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                    ))
+            musics_artist = (Music.objects.filter(artist__name=artist_name).exclude(pk__in=music)
+                             .select_related('album', 'artist')
+                             .annotate(
+                                 liked=Exists(liked_musics),
+                                 in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                             )
+                             .order_by('?').all())
             
             if musics_artist.exists():    
                 musics = list(chain(music, musics_artist))
-                context.update({ 'musics_queue': musics, 'is_artist': artist_name, 'random': True})
+                context.update({ 'musics_queue': musics, 'is_artist': artist_name, 'random': True, 'lists': list_objects })
             else:
-                context.update({ 'musics_queue': music, 'is_artist': artist_name, 'random': True})
-
+                context.update({ 'musics_queue': music, 'is_artist': artist_name, 'random': True, 'lists': list_objects })
         else:
-            music = Music.objects.filter(id=currentMusic)
-            musics_artist = Artist.objects.filter(name=artist_name).first().music_set.all().exclude(pk__in=music)
+            music = (Music.objects.filter(id=currentMusic).select_related('album', 'artist')
+                     .annotate(
+                         liked=Exists(liked_musics),
+                         in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                    ))
+            musics_artist = (Music.objects.filter(artist__name=artist_name).exclude(pk__in=music)
+                             .select_related('album', 'artist')
+                             .annotate(
+                                 liked=Exists(liked_musics),
+                                 in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                             ).all())
             
-            if musics_artist.exists():    
+            if musics_artist.exists():
                 musics = list(chain(music, musics_artist))
-                context.update({ 'musics_queue': musics, 'is_artist': artist_name })
+                context.update({ 'musics_queue': musics, 'is_artist': artist_name, 'lists': list_objects })
             else:
-                context.update({ 'musics_queue': music, 'is_artist': artist_name })
+                context.update({ 'musics_queue': music, 'is_artist': artist_name, 'lists': list_objects })
             
         return render(request, 'modal.html#tableSongs', context)
     
 def play_music(request, id):
+    profile = request.user.profile_set.prefetch_related('lists').first()
+    list_objects = profile.lists.all()
+    liked_musics = Liked_musics.objects.filter(profile=profile, musics=OuterRef('pk'))
     context = {}
     
     if request.htmx:
         currentMusic = request.GET.get('currentMusic', None)
         if 'random' in request.GET:
-            music = Music.objects.filter(id=currentMusic)
-            musics_by_artist = Music.objects.filter(artist=music.first().artist).exclude(pk__in=music).order_by('?')
+            music = (Music.objects.filter(id=currentMusic).select_related('album', 'artist')
+                     .annotate(
+                         liked=Exists(liked_musics),
+                         in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                     ))
+            musics_by_artist = (Music.objects.filter(artist=music.first().artist).exclude(pk__in=music)
+                                .select_related('album', 'artist')
+                                .annotate(
+                                    liked=Exists(liked_musics),
+                                    in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                                )
+                                .order_by('?'))
             
             if musics_by_artist.exists():    
                 musics = list(chain(music, musics_by_artist))
-                context.update({ 'musics_queue': musics, 'is_music': id, 'random': True })
+                context.update({ 'musics_queue': musics, 'is_music': id, 'random': True, 'lists': list_objects })
             else:
-                context.update({ 'musics_queue': music, 'is_music': id, 'random': True })
+                context.update({ 'musics_queue': music, 'is_music': id, 'random': True, 'lists': list_objects })
                 
         else:
             id_music = currentMusic if currentMusic != None else id
-            music = Music.objects.filter(id=id_music)
-            musics_by_artist = Music.objects.filter(artist=music.first().artist).exclude(pk__in=music)
+            music = (Music.objects.filter(id=id_music).select_related('artist', 'album')
+                     .annotate(
+                         liked=Exists(liked_musics),
+                         in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                     ))
+            musics_by_artist = (Music.objects.filter(artist=music.first().artist).exclude(pk__in=music)
+                                .select_related('album', 'artist')
+                                .annotate(
+                                    liked=Exists(liked_musics),
+                                    in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                                ))
             
             if musics_by_artist.exists():    
                 musics = list(chain(music, musics_by_artist))
-                context.update({ 'musics_queue': musics, 'is_music': id })
+                context.update({ 'musics_queue': musics, 'is_music': id, 'lists': list_objects })
             else:
-                context.update({ 'musics_queue': music, 'is_music': id })
+                context.update({ 'musics_queue': music, 'is_music': id, 'lists': list_objects })
                 
         return render(request, 'modal.html#tableSongs', context)
     
 def play_music_on_album(request, id):
+    profile = request.user.profile_set.prefetch_related('lists').first()
+    list_objects = profile.lists.all()
+    liked_musics = Liked_musics.objects.filter(profile=profile, musics=OuterRef('pk'))
     context = {}
     
     if request.htmx:
         currentMusic = request.GET.get('currentMusic', None)
         if 'random' in request.GET:
-            music = Music.objects.filter(id=currentMusic)
-            album_musics = music.first().album.music_set.exclude(pk__in=music)
-            artist_musics = music.first().artist.music_set.exclude(pk__in=album_musics|music)
+            music = (Music.objects.filter(id=currentMusic)
+                     .select_related('album', 'artist')
+                     .annotate(
+                         liked=Exists(liked_musics),
+                         in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                     ))
+            album_musics = (music.first().album.music_set.exclude(pk__in=music)
+                            .select_related('album', 'artist')
+                            .annotate(
+                                liked=Exists(liked_musics),
+                                in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                            ))
+            artist_musics = (music.first().artist.music_set.exclude(pk__in=album_musics|music)
+                             .select_related('album', 'artist')
+                             .annotate(
+                                 liked=Exists(liked_musics),
+                                 in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                             ))
             
             if artist_musics.exists():    
-                musics = album_musics.union(artist_musics).order_by('?')
-                musics = list(chain(music, musics))
-                context.update({ 'musics_queue': musics, 'is_music_on_album': id, 'random': True })
+                musics = list(album_musics.union(artist_musics))
+                shuffle(musics)
+                musics_list = list(chain(music, musics))
+                context.update({ 'musics_queue': musics_list, 'is_music_on_album': id, 'random': True, 'lists': list_objects })
             else:
                 musics = list(chain(music, album_musics.order_by('?')))
-                context.update({ 'musics_queue': musics, 'is_music_on_album': id, 'random': True })
+                context.update({ 'musics_queue': musics, 'is_music_on_album': id, 'random': True, 'lists': list_objects })
         else:
             id_music = currentMusic if currentMusic != None else id
-            music = Music.objects.filter(id=id_music)
-            album_musics = music.first().album.music_set.exclude(pk__in=music)
-            artist_musics = music.first().artist.music_set.exclude(pk__in=album_musics|music)
+            music = (Music.objects.filter(id=id_music)
+                     .select_related('album', 'artist')
+                     .annotate(
+                         liked=Exists(liked_musics),
+                         in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                     ))
+            album_musics = (music.first().album.music_set.exclude(pk__in=music)
+                            .select_related('album', 'artist')
+                            .annotate(
+                                liked=Exists(liked_musics),
+                                in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                            ))
+            artist_musics = (music.first().artist.music_set.exclude(pk__in=album_musics|music)
+                             .select_related('album', 'artist')
+                             .annotate(
+                                 liked=Exists(liked_musics),
+                                 in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                             ))
             
             if artist_musics.exists():
-                musics = album_musics.union(artist_musics)
-                musics = list(chain(music, musics))
-                context.update({ 'musics_queue': musics, 'is_music_on_album': id })
+                musics = list(chain(music, album_musics, artist_musics))
+                context.update({ 'musics_queue': musics, 'is_music_on_album': id, 'lists': list_objects })
             else:
                 musics = list(chain(music, album_musics))
-                context.update({ 'musics_queue': musics, 'is_music_on_album': id })
+                context.update({ 'musics_queue': musics, 'is_music_on_album': id, 'lists': list_objects })
             
         return render(request, 'modal.html#tableSongs', context)
 
 def play_liked_musics(request):
+    profile = request.user.profile_set.prefetch_related('lists').first()
+    list_objects = profile.lists.all()
+    liked_musics = Liked_musics.objects.filter(profile=profile, musics=OuterRef('pk'))
     context = {}
-    profile = request.user.profile_set.first()
+    
     currentMusic = request.GET.get('currentMusic', None)
     if 'random' in request.GET:
-        music = Music.objects.filter(id=currentMusic)
-        likedMusics = Liked_musics.objects.filter(profile=profile).first().musics.all().exclude(pk__in=music).order_by('?')
+        music = (Music.objects.filter(id=currentMusic)
+                 .select_related('album', 'artist')
+                 .annotate(
+                     liked=Exists(liked_musics),
+                     in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                 ))
+        likedMusics = (Liked_musics.objects.filter(profile=profile).first().musics.exclude(pk__in=music)
+                       .select_related('album', 'artist')
+                       .annotate(
+                           liked=Exists(liked_musics),
+                           in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                       )
+                       .order_by('?'))
         
         if likedMusics.exists():    
             musics = list(chain(music, likedMusics))
-            context.update({ 'musics_queue': musics, 'is_liked_musics': True, 'random': True })
+            context.update({ 'musics_queue': musics, 'is_liked_musics': True, 'random': True, 'lists': list_objects })
         else:
-            context.update({ 'musics_queue': music, 'is_liked_musics': True, 'random': True })
+            context.update({ 'musics_queue': music, 'is_liked_musics': True, 'random': True, 'lists': list_objects })
     else:
-        music = Music.objects.filter(id=currentMusic)
-        likedMusics = Liked_musics.objects.filter(profile=profile).first().musics.all().exclude(pk__in=music).order_by('-lm_musics__created_at')
+        music = (Music.objects.filter(id=currentMusic)
+                 .select_related('album', 'artist')
+                 .annotate(
+                     liked=Exists(liked_musics),
+                     in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                 ))
+        likedMusics = (Liked_musics.objects.filter(profile=profile).first().musics.exclude(pk__in=music)
+                       .select_related('album', 'artist')
+                       .annotate(
+                           liked=Exists(liked_musics),
+                           in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                       )
+                       .order_by('-lm_musics__created_at'))
         
         if likedMusics.exists():    
             musics = list(chain(music, likedMusics))
-            context.update({ 'musics_queue': musics, 'is_liked_musics': True })
+            context.update({ 'musics_queue': musics, 'is_liked_musics': True, 'lists': list_objects })
         else:
-            context.update({ 'musics_queue': music, 'is_liked_musics': True })
+            context.update({ 'musics_queue': music, 'is_liked_musics': True, 'lists': list_objects })
         
     return render(request, 'modal.html#tableSongs', context)
 
 def play_liked_music(request, id):
+    profile = request.user.profile_set.prefetch_related('lists').first()
+    list_objects = profile.lists.all()
+    liked_musics = Liked_musics.objects.filter(profile=profile, musics=OuterRef('pk'))
     context = {}
-    profile = request.user.profile_set.first()
+    
     currentMusic = request.GET.get('currentMusic', None)
     if 'random' in request.GET:
-        music = Liked_musics.objects.filter(profile=profile).first().musics.filter(id=currentMusic)
-        likedMusics = Liked_musics.objects.filter(profile=profile).first().musics.all().exclude(pk__in=music).order_by('?')
+        musics = (Liked_musics.objects.filter(profile=profile).first().musics
+                .select_related('album', 'artist')
+                .annotate(
+                    liked=Exists(liked_musics),
+                    in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                ))
+        music = musics.filter(id=currentMusic)
+        likedMusics = musics.exclude(pk__in=music).order_by('?')
         
         if likedMusics.exists():
             musics = list(chain(music, likedMusics))
-            context.update({ 'musics_queue': musics, 'is_liked_music': id, 'random': True })
+            context.update({ 'musics_queue': musics, 'is_liked_music': id, 'random': True, 'lists': list_objects })
         else:
-            context.update({ 'musics_queue': music, 'is_liked_music': id, 'random': True })
+            context.update({ 'musics_queue': music, 'is_liked_music': id, 'random': True, 'lists': list_objects })
     else:
         id_music = currentMusic if currentMusic != None else id
-        music = Liked_musics.objects.filter(profile=profile).first().musics.filter(id=id_music)
-        likedMusics = Liked_musics.objects.filter(profile=profile).first().musics.all().exclude(pk__in=music).order_by('-lm_musics__created_at')
+        musics = (Liked_musics.objects.filter(profile=profile).first().musics
+                .select_related('album', 'artist')
+                .annotate(
+                    liked=Exists(liked_musics),
+                    in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                ))
+        music = musics.filter(id=id_music)
+        likedMusics = musics.exclude(pk__in=music).order_by('-lm_musics__created_at')
         
         if likedMusics.exists():
             musics = list(chain(music, likedMusics))
-            context.update({ 'musics_queue': musics, 'is_liked_music': id })
+            context.update({ 'musics_queue': musics, 'is_liked_music': id, 'lists': list_objects })
         else:
-            context.update({ 'musics_queue': music, 'is_liked_music': id })
+            context.update({ 'musics_queue': music, 'is_liked_music': id, 'lists': list_objects })
         
     return render(request, 'modal.html#tableSongs', context)
 
 def play_list(request, id):
+    profile = request.user.profile_set.prefetch_related('lists').first()
+    list_objects = profile.lists.all()
+    liked_musics = Liked_musics.objects.filter(profile=profile, musics=OuterRef('pk'))
     context = {}
+    
     currentMusic = request.GET.get('currentMusic', None)
     if 'random' in request.GET:
-        music = Music.objects.filter(id=currentMusic)
-        list_musics = List.objects.filter(id=id).first().musics.all().exclude(pk__in=music).order_by('?')
+        music = (Music.objects.filter(id=currentMusic)
+                 .select_related('album', 'artist')
+                 .annotate(
+                     liked=Exists(liked_musics),
+                     in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                 ))
+        list_musics = (List.objects.filter(id=id).first().musics.exclude(pk__in=music)
+                       .select_related('album', 'artist')
+                       .annotate(
+                           liked=Exists(liked_musics),
+                           in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                       ).order_by('?'))
         
         if list_musics.exists():
             musics = list(chain(music, list_musics))
-            context.update({ 'musics_queue': musics, 'is_list': id, 'random': True })
+            context.update({ 'musics_queue': musics, 'is_list': id, 'random': True, 'lists': list_objects })
         else:
-            context.update({ 'musics_queue': music, 'is_list': id, 'random': True })
+            context.update({ 'musics_queue': musics, 'is_list': id, 'random': True, 'lists': list_objects })
     else:
-        id_music = currentMusic if currentMusic != None else id
-        music = Music.objects.filter(id=id_music)
-        list_musics = List.objects.filter(id=id).first().musics.all().exclude(pk__in=music).order_by('l_musics__created_at')
+        music = (Music.objects.filter(id=currentMusic)
+                 .select_related('album', 'artist')
+                 .annotate(
+                     liked=Exists(liked_musics),
+                     in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                 ))
+        list_musics = (List.objects.filter(id=id).first().musics.exclude(pk__in=music)
+                       .select_related('album', 'artist')
+                       .annotate(
+                           liked=Exists(liked_musics),
+                           in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                       )
+                       .order_by('l_musics__created_at'))
         
         if list_musics.exists():
             musics = list(chain(music, list_musics))
-            context.update({ 'musics_queue': musics, 'is_list': id })
+            context.update({ 'musics_queue': musics, 'is_list': id, 'lists': list_objects })
         else:
-            context.update({ 'musics_queue': music, 'is_list': id })
+            context.update({ 'musics_queue': musics, 'is_list': id, 'lists': list_objects })
         
     return render(request, 'modal.html#tableSongs', context)
     
 def play_music_on_list(request, id_list, id_music):
+    profile = request.user.profile_set.prefetch_related('lists').first()
+    list_objects = profile.lists.all()
+    liked_musics = Liked_musics.objects.filter(profile=profile, musics=OuterRef('pk'))
     context = {}
+    
     currentMusic = request.GET.get('currentMusic', None)
     if 'random' in request.GET:
-        music = Music.objects.filter(id=currentMusic)
-        list_musics = List.objects.filter(id=id_list).first().musics.exclude(pk__in=music).order_by('?')
+        music = (Music.objects.filter(id=currentMusic)
+                 .select_related('album', 'artist')
+                 .annotate(
+                     liked=Exists(liked_musics),
+                     in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                 ))
+        list_musics = (List.objects.filter(id=id_list).first().musics.exclude(pk__in=music)
+                       .select_related('album', 'artist')
+                       .annotate(
+                           liked=Exists(liked_musics),
+                           in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                       ).order_by('?'))
         
         if list_musics.exists():
             musics = list(chain(music, list_musics))
-            context.update({ 'musics_queue': musics, 'is_list_music': True, 'id_list': id_list, 'id_music': id_music, 'random': True})
+            context.update({ 'musics_queue': musics, 'is_list_music': True, 'id_list': id_list, 'id_music': id_music, 'random': True, 'lists': list_objects })
         else:
-            context.update({ 'musics_queue': music, 'is_list_music': True, 'id_list': id_list, 'id_music': id_music, 'random': True})
+            context.update({ 'musics_queue': music, 'is_list_music': True, 'id_list': id_list, 'id_music': id_music, 'random': True, 'lists': list_objects })
     else:
         id_music = currentMusic if currentMusic != None else id_music
-        music = Music.objects.filter(id=id_music)
-        list_musics = List.objects.filter(id=id_list).first().musics.exclude(pk__in=music).order_by('l_musics__created_at')
+        music = (Music.objects.filter(id=id_music)
+                 .select_related('album', 'artist')
+                 .annotate(
+                     liked=Exists(liked_musics),
+                     in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                 ))
+        list_musics = (List.objects.filter(id=id_list).first().musics.exclude(pk__in=music)
+                       .select_related('album', 'artist')
+                       .annotate(
+                           liked=Exists(liked_musics),
+                           in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True)
+                       ).order_by('l_musics__created_at'))
         
         if list_musics.exists():
             musics = list(chain(music, list_musics))
-            context.update({ 'musics_queue': musics, 'is_list_music': True, 'id_list': id_list, 'id_music': id_music })
+            context.update({ 'musics_queue': musics, 'is_list_music': True, 'id_list': id_list, 'id_music': id_music, 'lists': list_objects })
         else:
-            context.update({ 'musics_queue': music, 'is_list_music': True, 'id_list': id_list, 'id_music': id_music })
+            context.update({ 'musics_queue': music, 'is_list_music': True, 'id_list': id_list, 'id_music': id_music, 'lists': list_objects })
     
     return render(request, 'modal.html#tableSongs', context)
 
@@ -735,7 +1048,7 @@ def serve_music(request, id_music):
     if not music.song:
         raise Http404("Archivo no encontrado.")
     
-    file_url = f"https://{os.getenv('SUPABASE_PROJECT_URL')}/storage/v1/object/public/{os.getenv('SUPABASE_BUCKET_NAME')}/{music.song.name}"
+    file_url = music.song.url
     file_path = music.song.name
     
     #UPDATE VIEWS
@@ -790,15 +1103,30 @@ def search(request):
                 context.update({ 'artists': artists, 'btnFilter': 'artists', 'results': True, 'search': data })
             
             if filter == 'albums':
-                albums = Album.objects.filter(Q(name__icontains=data) | Q(artist__name__icontains= data) | Q(music__name__icontains=data)).exclude(name='Ninguno').order_by('-name').distinct()
+                albums = (Album.objects.filter(Q(name__icontains=data) | Q(artist__name__icontains= data) | Q(music__name__icontains=data))
+                          .select_related('artist')
+                          .exclude(name='Ninguno').order_by('-name').distinct())
                 context.update({ 'albums': albums , 'btnFilter': 'albums', 'results': True, 'search': data })
                 
             if filter == 'songs':
-                musics = Music.objects.filter(Q(name__icontains=data) | Q(album__name__icontains=data) | Q(artist__name__icontains= data)).order_by('-name').distinct()
+                musics = (Music.objects.filter(Q(name__icontains=data) | Q(album__name__icontains=data) | Q(artist__name__icontains= data))
+                          .select_related('album', 'artist')
+                          .order_by('-name').distinct())
                 context.update({ 'musics': musics, 'btnFilter': 'songs', 'results': True, 'search': data })
                 
             if filter == 'lists':
-                list_objects = List.objects.filter(Q(name__icontains=data) | Q(musics__name__icontains=data) | Q(musics__artist__name__icontains=data)).order_by('-name').distinct()
+                list_objects = (List.objects.filter(Q(name__icontains=data) | Q(musics__name__icontains=data) | Q(musics__artist__name__icontains=data))
+                                .annotate(
+                                list_img=Coalesce(
+                                    Subquery(Music.objects.filter(list=OuterRef('id'), img__isnull=False).values('img').exclude(img__exact='')[:1]),
+                                    Subquery(Album.objects.filter(music__list=OuterRef('id')).values('img')[:1]))
+                                )
+                                .order_by('-name').distinct())
+                list_objects = list(list_objects.values())
+                for obj in list_objects:
+                    if obj['list_img'] is not None:
+                        obj['list_img'] = default_storage.url(obj['list_img'])
+                    
                 context.update({ 'lists': list_objects, 'btnFilter': 'lists', 'results': True, 'search': data })
                 
             if filter == 'profiles':
@@ -807,21 +1135,46 @@ def search(request):
                 
         else:
             artists = Artist.objects.filter(Q(name__icontains=data) | Q(album__name__icontains=data) | Q(music__name__icontains=data)).order_by('-name').distinct()[:4]
-            albums = Album.objects.filter(Q(name__icontains=data) | Q(artist__name__icontains= data) | Q(music__name__icontains=data)).exclude(name='Ninguno').order_by('-name').distinct()[:4]
-            musics = Music.objects.filter(Q(name__icontains=data) | Q(album__name__icontains=data) | Q(artist__name__icontains= data)).order_by('-name').distinct()[:4]
-            list_objects = List.objects.filter(Q(name__icontains=data) | Q(musics__name__icontains=data) | Q(musics__artist__name__icontains=data)).order_by('-name').distinct()[:4]
+            albums = Album.objects.filter(Q(name__icontains=data) | Q(artist__name__icontains= data) | Q(music__name__icontains=data)).exclude(name='Ninguno').select_related('artist').order_by('-name').distinct()[:4]
+            list_objects = (List.objects.filter(Q(name__icontains=data) | Q(musics__name__icontains=data) | Q(musics__artist__name__icontains=data))
+                            .annotate(
+                                list_img=Coalesce(
+                                    Subquery(Music.objects.filter(list=OuterRef('id'), img__isnull=False).values('img').exclude(img__exact='')[:1]),
+                                    Subquery(Album.objects.filter(music__list=OuterRef('id')).values('img')[:1]))
+                            )
+                            .order_by('-name').distinct()[:4])
+            list_objects = list(list_objects.values())
+            for obj in list_objects:
+                if obj['list_img'] is not None:
+                    obj['list_img'] = default_storage.url(obj['list_img'])
+                    
             profiles = Profile.objects.filter(name__icontains=data).order_by('-name')[:4]
             
-            context = {
+            if request.user.is_authenticated:
+                profile = request.user.profile_set.prefetch_related('lists').first()
+                musics = (Music.objects.filter(Q(name__icontains=data) | Q(album__name__icontains=data) | Q(artist__name__icontains= data))
+                      .annotate(
+                          liked=Exists(Liked_musics.objects.filter(musics__id=OuterRef('id'))),
+                          in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True),
+                      )
+                      .select_related('artist', 'album')
+                      .order_by('-name').distinct()[:4])
+                context.update({"musics": musics, "created_lists": profile.lists.all()})
+            else:
+                musics = (Music.objects.filter(Q(name__icontains=data) | Q(album__name__icontains=data) | Q(artist__name__icontains= data))
+                          .select_related('artist', 'album')
+                          .order_by('-name').distinct()[:4])
+                context.update({"musics": musics})
+            
+            context.update({
                 'artists': artists,
                 'albums': albums,
-                'musics': musics,
                 'lists': list_objects,
                 'profiles': profiles,
                 'search': data,
                 'results': True,
                 'btnFilter': 'all',
-            }
+            })
         
         if request.htmx:
             return render(request, 'pages/search.html#search', context)
@@ -842,42 +1195,23 @@ def search(request):
                 context.update({'login': FormLogin})
                 
             return render(request, 'pages/search.html', context=context)
-
-def search_results(request, search):
-    pass
-
-def search_artist(request, entry):
-    pass
     
 @login_required
 def like_music(request, id):
     if request.htmx:
         profile = request.user.profile_set.first()
         added=False
-        
-        # CHECK IF THERE'S A REGISTER
-        liked_musics = Liked_musics.objects.filter(profile=profile)
-        if liked_musics.exists():
-            musics = liked_musics.first().musics
-            
-            # CHECK IF ADD OR REMOVE LIKE
-            if musics.filter(id=id).exists():
-                musics.remove(id)
+
+        with transaction.atomic():
+            liked_music, created = Liked_musics.objects.get_or_create(profile=profile)
+
+            if liked_music.musics.filter(id=id).exists():
+                liked_music.musics.remove(id)
             else:
-                musics.add(id)
-                added=True
-            
-        else:
-            # CREATE REGISTER
-            liked_music = Liked_musics(profile=profile)
-            liked_music.save()
-            
-            # ADD LIKED SONG
-            liked_musics = Liked_musics.objects.filter(profile=profile).first()
-            liked_musics.musics.add(id)
-            added=True
-            
-        return render(request, 'list.html#likeElement', {"musicId": id, "added":added})
+                liked_music.musics.add(id)
+                added = True
+
+        return render(request, 'list.html#likeElement', {"musicId": id, "added": added})
 
 @login_required   
 def like_album(request, id):
@@ -974,14 +1308,23 @@ def follow_artist(request, id):
 
 @login_required
 def liked_musics(request):
-    profile = request.user.profile_set.first()
+    profile = request.user.profile_set.prefetch_related('lists').first()
     context = {}    
     
-    musics = Liked_musics.objects.filter(profile=profile).first().musics.order_by('-lm_musics__created_at').all()
+    liked_musics = Liked_musics.objects.filter(profile=profile)
+    musics = (liked_musics.first().musics
+              .select_related('artist')
+              .select_related('album')
+              .annotate(
+                  liked=Exists(liked_musics),
+                  in_list=ArrayAgg('list__id', filter=Q(list__profile=profile), distinct=True),
+                )
+              .order_by('-lm_musics__created_at').all())
     context.update({
         'musics': musics,
         'profile': profile,
-        'nameList': 'liked_musics'
+        'nameList': 'liked_musics',
+        'lists': profile.lists.all(),
     })
     
     if request.htmx:
@@ -994,9 +1337,19 @@ def view_list(request, id):
     context = {}
     try:
         list_object = get_object_or_404(List, id=id)
-        musics = list_object.musics.order_by('l_musics__created_at').all()
+        liked_musics = Liked_musics.objects.filter(profile=list_object.profile, musics=OuterRef('id'))
+        musics = (list_object.musics
+                  .select_related('artist', 'album')
+                  .annotate(
+                      liked=Exists(liked_musics),
+                      in_list=ArrayAgg('list__id', filter=Q(list__profile=list_object.profile), distinct=True),
+                  )
+                  .order_by('l_musics__created_at').all())
+        
         context.update({
+            'list_img': musics[0].imgUrl if musics.exists() else '',
             'list': list_object,
+            'lists': list_object.profile.lists.all(),
             'musics': musics,
             'nameList': list_object.name,
             'profile': list_object.profile,
@@ -1013,16 +1366,14 @@ def view_list(request, id):
             
     if request.htmx:
         if request.user.is_authenticated:
-            profile = request.user.profile_set.first()
-            like_exist = Liked_lists.objects.filter(profile=profile, lists=list_object).exists()
+            like_exist = Liked_lists.objects.filter(profile=context.get('profile'), lists=list_object).exists()
             context.update({ 'liked': like_exist})
             
         return render(request, 'list.html#list', context)
     
     else:
         if request.user.is_authenticated:
-            profile = request.user.profile_set.first()
-            like_exist = Liked_lists.objects.filter(profile=profile, lists=list_object).exists()
+            like_exist = Liked_lists.objects.filter(profile=context.get('profile'), lists=list_object).exists()
             context.update({ 'liked': like_exist})
             context.update(get_library(request))
         else:
@@ -1035,7 +1386,7 @@ def view_mylist(request, name):
     context = {}
     try:
         profile = request.user.profile_set.first()
-        list_object = get_object_or_404(List, name=name, profile=profile)
+        list_object = get_object_or_404(List.objects.prefetch_related('musics'), name=name, profile=profile)
         musics = list_object.musics.order_by('l_musics__created_at').all()
         context.update({
             'list': list_object,
@@ -1113,7 +1464,7 @@ def edit_list(request, id_list):
                 list_object.save()
                 
                 response = HttpResponse()
-                response['HX-Redirect'] = '/my_lists/' + data
+                response['HX-Redirect'] = '/list/' + str(list_object.id)
                 return response
                 
         else:
@@ -1126,9 +1477,9 @@ def edit_list(request, id_list):
             
     
 @login_required    
-def delete_list(request, name):
+def delete_list(request, id):
     profile = request.user.profile_set.first()
-    List.objects.filter(profile=profile, name=name).delete()
+    List.objects.filter(profile=profile, id=id).delete()
     
     response = HttpResponse('')
     response['HX-Redirect'] = '/'
@@ -1137,52 +1488,46 @@ def delete_list(request, name):
 @login_required
 def add_to_list(request, id_music, id_list):
     if request.htmx:
-        profile = request.user.profile_set.first()
+        profile = request.user.profile_set.get()
         added = False
         
-        music = Music.objects.filter(id=id_music).first()
-        list_object = List.objects.filter(profile=profile, id=id_list).first()
+        list_object = List.objects.filter(profile=profile, id=id_list).prefetch_related('musics').get()
         
         # CHECK IF THERE'S A REGISTER
-        music_exists = List.objects.filter(id=id_list, musics=music).exists()
-        if music_exists:
+        music_ids = set(list_object.musics.values_list('id', flat=True))
+        if int(id_music) in music_ids:
             list_object.musics.remove(id_music)
         else:
             list_object.musics.add(id_music)
             added = True
             
         # CHECK URL
-        likedMusics = str(request.META.get("HTTP_REFERER")).find('liked_musics')
         isListView = False
-        if likedMusics < 0:           
-            # CHECK MYLIST
-            isListView = str(request.META.get("HTTP_REFERER")).find('my_lists')
-            isListView = True if isListView > 0 else False
-            
-            # CHECK NAME LIST
-            isListView = str(request.META.get("HTTP_REFERER")).find(list_object.name)
-            isListView = True if isListView > 0 else False
+        isListView = str(request.META.get("HTTP_REFERER")).find(str(id_list))
+        isListView = True if isListView > 0 else False
             
         musics = list_object.musics.order_by('l_musics__created_at').all() if isListView else None
-        
         context = {
             'id_music': id_music,
-            'nameList': list_object.name,
+            'nameList': '',
+            'list_img': list_object.getImg,
             'list': list_object,
             'musics': musics,
             'added': added,
             'isListView': isListView,
-            'profile': request.user.profile_set.first()
+            'profile': profile
         }
         return render(request, 'list.html#listElement', context)
 
 # MANAGEMENT
 @login_required(login_url="/login")
 def management(request):
-    artist = Artist.objects.filter(user=request.user.id).first()
+    artist = Artist.objects.filter(user=request.user.id).prefetch_related('music_set').first()
+    
     if artist:
-        musics = Music.objects.filter(artist=artist.id)
-        form = FormMusics(user=request.user, initial=True)
+        musics = artist.music_set.select_related('album').prefetch_related('genre_set').all()
+        form = FormMusics(user=request.user, initial=True, artist=artist)
+        
         return render(
             request, "pages/admin.html", {"musics": musics, "FormMusics": form}
         )
@@ -1258,8 +1603,16 @@ def management_musics(request):
         form = FormMusics(request.POST, request.FILES, user=request.user)
         if form.is_valid():
             music = form.save(commit=False)
-            artist = Artist.objects.filter(user=request.user.id).first()
-            music.artist = artist
+            
+            # GET ARTIST
+            music.artist = form.artist
+            
+            # GET DURATION
+            song = MutaFile(request.FILES['song'])
+            minutes = int(math.floor(song.info.length/60))
+            seconds = int(math.floor(song.info.length%60))
+            music.duration = f"{minutes}:{seconds:02d}"
+            
             music.save()
 
             # ADD GENRE 
@@ -1268,17 +1621,16 @@ def management_musics(request):
             for genre in genres:
                 music.genre_set.add(genre.id)
 
-            musics = Music.objects.filter(artist=artist)
+            musics = Music.objects.filter(artist=form.artist).select_related('artist', 'album').prefetch_related('genre_set').all()
             form = FormMusics(user=request.user)
             return render(request, "pages/admin.html#musics", {"FormMusics": form, "musics": musics})
         else:
-            artist = Artist.objects.filter(user=request.user.id).first()
-            musics = Music.objects.filter(artist=artist)
+            musics = Music.objects.filter(artist=form.artist).select_related('artist', 'album').prefetch_related('genre_set').all()
             return render(request, "pages/admin.html#musics", {"FormMusics": form, "musics": musics})
     else: 
-        artist = Artist.objects.filter(user=request.user.id).first()
-        musics = Music.objects.filter(artist=artist)
-        form = FormMusics(user=request.user, initial=True)
+        artist = Artist.objects.filter(user=request.user.id).prefetch_related('music_set').first()
+        musics = Music.objects.filter(artist=artist).select_related('album').prefetch_related('genre_set').all()
+        form = FormMusics(user=request.user, initial=True, artist=artist)
         return render(request, "pages/admin.html#musics", {"FormMusics": form, "musics": musics})
 
 
@@ -1305,9 +1657,8 @@ def management_music(request, id):
                 music.genre_set.add(genre.id)
 
             # RESPONSE
-            artist = Artist.objects.filter(user=request.user.id).first()
-            musics = Music.objects.filter(artist=artist)
-            form = FormMusics(user=request.user)
+            musics = Music.objects.filter(artist=form.artist).select_related('album').prefetch_related('genre_set')
+            form = FormMusics(user=request.user, artist=form.artist)
             return render(request, "pages/admin.html#musics", {"FormMusics": form, "musics": musics})
         
     elif request.method == 'DELETE':
@@ -1316,7 +1667,7 @@ def management_music(request, id):
 
         artist = Artist.objects.filter(user=request.user.id).first()
         musics = Music.objects.filter(artist=artist)
-        form = FormMusics(user=request.user)
+        form = FormMusics(user=request.user, artist=artist)
         return render(request, "pages/admin.html#musics", {"FormMusics": form, "musics": musics})
     
     else:
@@ -1333,7 +1684,7 @@ def management_music_new(request):
 @login_required()
 def management_music_edit(request, id):
     music = Music.objects.filter(id=id).first()
-    form = FormMusics(initial={"genre": music.genre_set.all()}, instance=music, user=request.user)
+    form = FormMusics(initial={"genre": music.genre_set.all(), "img": music.img}, instance=music, user=request.user)
     context = {
         "FormMusics": form, 
         "music": music

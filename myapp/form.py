@@ -91,7 +91,7 @@ class FormMusics(forms.ModelForm):
                            max_length=100,
                            widget=forms.TextInput(attrs={'placeholder': 'Nombre de la canción'}))
     song = forms.FileField(label='Canción', label_suffix='',widget=forms.FileInput())
-    img = forms.ImageField(label='Portada de la canción', label_suffix='', required=False, widget=forms.FileInput(attrs={'onchange': 'previewImg(event)', 'required': 'true'}))
+    img = forms.ImageField(label='Portada de la canción', label_suffix='', widget=forms.FileInput(attrs={'onchange': 'previewImg(event)'}))
 
     # CONFIG SELECT
     attrs = {
@@ -104,13 +104,27 @@ class FormMusics(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user')
         initial = kwargs.pop('initial', None)
-
-        artist = Artist.objects.filter(user=user.id).first()
+        artist = kwargs.pop('artist', None)
+        self.artist = artist if artist is not None else Artist.objects.filter(user=user.id).first()
+        
         super().__init__(*args, **kwargs)
-        queryset = Album.objects.filter(name='Ninguno') | Album.objects.filter(artist=artist)
+        
+        queryset = Album.objects.filter(name='Ninguno') | Album.objects.filter(artist=self.artist)
         self.fields['album'].queryset = queryset
         if (initial is not None) and queryset.exists():
             self.fields['album'].initial = queryset[0]
+        
+        # VALIDATE ALBUM
+        if self.instance.album != None:
+            self.fields['img'].required = False if self.instance.album.name != 'Ninguno' else True
+            
+        if self.data.get('album', None) != None:
+            self.fields['img'].required = False if self.data.get('album', None) != 1 else True
+            
+        # VALIDATE GENRES
+        if type(initial) == dict:
+            if initial['genre'] is not None:
+                self.fields['genre'].initial = initial['genre']
 
     class Meta:
         model = Music

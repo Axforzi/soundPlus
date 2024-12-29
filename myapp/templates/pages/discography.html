@@ -14,9 +14,17 @@
 
                 <div class="discography-body">
                     {% for album in albums %}
-                        <div class="discography-card">
+                        <div class="discography-card" 
+                             hx-get="{% url 'album_view' artist_name=album.artist.name album_name=album.name %}"
+                             hx-target=".content"
+                             hx-swap="innerHTML swap:0.2s settle:0.2s"
+                             hx-indicator=".loading.main"
+                             hx-push-url="true">
                             <div class="container-cover">
-                                <img src="{{ album.imgUrl }}" alt="{{ album.name }}">
+                                <img class="lazyload"
+                                    data-src="{{ album.img.url }}"
+                                    src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" 
+                                    alt="{{ album.name }}">
                             </div>
                             <div class="container-info">
                                 <h2> {{ album.name }} </h2>
@@ -36,9 +44,21 @@
 
                 <div class="discography-body">
                     {% for ep_single in ep_singles %}
-                        <div class="discography-card">
+                        <div class="discography-card"
+                            hx-get="{% if ep_single.model_type == 'Music' %}
+                                        {% url 'single_view' artist_name=ep_single.artist_name single_name=ep_single.name %}
+                                    {% else %}
+                                        {% url 'album_view' artist_name=ep_single.artist_name album_name=ep_single.name %}
+                                    {% endif %}"
+                            hx-swap="innerHTML swap:0.2s settle:0.2s"
+                            hx-target=".content"
+                            hx-push-url="true"
+                            hx-indicator=".loading.main">
                             <div class="container-cover">
-                                <img src="{{ ep_single.img|imgUrl }}" alt="{{ ep_single.name }}">
+                                <img class="lazyload"
+                                    data-src="{{ ep_single.img }}"
+                                    src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" 
+                                    alt="{{ ep_single.name }}">
                             </div>
                             <div class="container-info">
                                 <h2> {{ ep_single.name }} </h2>

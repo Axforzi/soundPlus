@@ -40,7 +40,12 @@
              hx-target=".content"
              hx-indicator=".loading.main"
              hx-swap="innerHTML swap:0.2s settle:0.2s">
-            <div class="preview-img"> <img src="{{ artist.profileImgUrl }}" alt="{{ artist.name }}"> </div>
+            <div class="preview-img"> 
+                <img class="lazyload"
+                    data-src="{{ artist.profileImg.url }}" 
+                    src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" 
+                    alt="{{ artist.name }}"> 
+            </div>
             <div class="list">
                 <h2 class="list-title"> {{ artist.name }} </h2>
                 <div class="info-songs"> Artista </div>
@@ -71,7 +76,12 @@
              hx-target=".content"
              hx-indicator=".loading.main"
              hx-swap="innerHTML swap:0.2s settle:0.2s">
-            <div class="preview-img"> <img src="/media/{{ album.img }}" alt="{{ album.name }}"> </div>
+            <div class="preview-img"> 
+                <img class="lazyload" 
+                    data-src="{{ album.img.url }}"
+                    src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" 
+                    alt="{{ album.name }}"> 
+            </div>
             <div class="list">
                 <h2 class="list-title"> {{ album.name }} </h2>
                 <div class="info-songs"> Album </div>
@@ -108,7 +118,12 @@
              hx-target=".content"
              hx-indicator=".loading.main"
              hx-swap="innerHTML swap:0.2s settle:0.2s">
-            <div class="preview-img"> <img src="/media/{{ list.getImg }}" alt="{{ list.name }}"> </div>
+            <div class="preview-img"> 
+                <img class="lazyload"
+                    data-src="{{ list_img }}" 
+                    src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" 
+                    alt="{{ list.name }}"> 
+            </div>
             <div class="list">
                 <h2 class="list-title"> {{ list.name }} </h2>
                 <div class="info-songs"> Lista </div>
@@ -155,15 +170,18 @@
 
     <!-- UPDATE ELEMENT  -->
     <div class="library-element" id="list-{{ list.id }}" 
-        hx-get="{% url 'view_mylist' name=list.name %}"
+        hx-get="{% url 'view_list' id=list.id %}"
         hx-target=".content"
         hx-push-url="true"
         hx-indicator=".loading.main"
         hx-swap="innerHTML swap:0.2s settle:0.2s"
         hx-swap-oob="outerHTML:.library-body .container-elements #list-{{ list.id }}">
-        {% if list.getImg != '' %}
+        {% if list_img != '' %}
             <div class="preview-img">
-                <img src="/media/{{ list.getImg }}" alt="{{ list.name }}">
+                <img class="lazyload"
+                    data-src="{{ list_img }}" 
+                    src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" 
+                    alt="{{ list.name }}">
             </div>
         {% else %}
             <div class="preview-img list-icon"></div>
@@ -184,7 +202,7 @@
 
 {% partialdef newList %}
     <div class="library-element" id="list-{{ list.id }}" 
-        hx-get="{% url 'view_mylist' name=list.name %}"
+        hx-get="{% url 'view_list' id=list.id %}"
         hx-target=".content"
         hx-indicator=".loading.main"
         hx-swap="innerHTML swap:0.2s settle:0.2s">
@@ -207,8 +225,11 @@
                 {% if nameList == 'liked_musics' %}
                     <span class="material-symbols-outlined">favorite</span>
                 {% else %}
-                    {% if list.getImg != '' %}
-                        <img src="/media/{{ list.getImg }}" alt="{{ list.name }}">
+                    {% if list_img != '' %}
+                        <img class="lazyload"
+                            data-src="{{ list_img }}" 
+                            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" 
+                            alt="{{ list.name }}">
                     {% else %}
                         <span class="material-symbols-outlined"> list </span>
                     {% endif %}                        
@@ -220,7 +241,12 @@
                     <p> Canciones que te gustan </p>
                     <span class="info">
                         {% if profile.profileImg != '' %}
-                            <img src="{{ profile.profileImgUrl }}" alt="{{ profile.name }}"> 
+                            <div class="container-img minimized">
+                                <img class="lazyload"
+                                    data-src="{{ profile.profileImg.url }}" 
+                                    src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" 
+                                    alt="{{ profile.name }}"> 
+                            </div>
                         {% else %}
                             <div class="container-img">
                                 <i class="fa-regular fa-user" style="background: rgba(0, 0, 0, 0.315); padding: 5px 6px; border-radius: 100%;"></i>
@@ -244,10 +270,22 @@
                 <h1> 
                     <p style="cursor: pointer; font-weight: 900; color: white;" 
                        hx-on:click="htmx.toggleClass(htmx.find('.edit-list-modal'), 'show')"> 
-                        {{ nameList }} 
+                        {{ list.name }} 
                     </p>
                     <span class="info">
-                        <img src="{{ profile.profileImgUrl }}" alt="{{ profile.name }}"> 
+                        {% if profile.profileImg != '' %}
+                            <div class="container-img minimized">
+                                <img class="lazyload" 
+                                    data-src="{{ profile.profileImg.url }}" 
+                                    src="{{ profile.profileImg.url }}" 
+                                    alt="{{ profile.name }}"> 
+                            </div>
+                        {% else %}
+                            <div class="container-img">
+                                <i class="fa-regular fa-user" style="background: rgba(0, 0, 0, 0.315); padding: 5px 6px; border-radius: 100%;"></i>
+                            </div>
+                        {% endif %}
+                        
                         <p> 
                             <span class="artist-link" 
                                 hx-get="{% url 'profile_view' id=profile.id %}"
@@ -264,8 +302,13 @@
             {% endif %}
         </div>
         <div class="cover-img background-white">
-            {% if nameList != 'liked_musics' and list.getImg != '' %}
-                <img src="/media/{{ list.getImg }}" alt="{{ list.name }}">
+            {% if nameList != 'liked_musics' and list_img != '' %}
+                <div class="container-coverimg">
+                    <img class="lazyload"
+                        data-src="{{ list_img }}" 
+                        src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                        alt="{{ list.name }}">
+                </div>
             {% endif %}
         </div>
     </div>
@@ -362,7 +405,7 @@
                         <td class="views"> {{ music.views }} </td>
                         <td class="add">
                             {% if request.user.is_authenticated %}
-                                <button class="add-library {% if music|liked_user:request.user %}added{% endif %}"
+                                <button class="add-library {% if music.liked %}added{% endif %}"
                                         hx-post="{% url 'like_music' id=music.id %}">
                                         <span class="material-symbols-outlined">favorite</span>
                                 </button>
@@ -383,13 +426,13 @@
                                     Añadir a la lista 
     
                                     <div class="lists">
-                                        {% for list in request.user.profile_set.first.list_set.all %}
+                                        {% for list in lists %}
                                             <button class="btn-add-list"
                                                     hx-post="{% url 'add_to_list' id_list=list.id id_music=music.id %}"
                                                     hx-swap="outerHTML swap:.2s settle:.2s"
                                                     {% if nameList != 'liked_musics' %} hx-indicator=".loading.main" {% endif %}> 
                                                 <span class="material-symbols-outlined">
-                                                   {% if music|check_list:list %} close {% else %} add {% endif %}
+                                                   {% if list.id in music.in_list %} close {% else %} add {% endif %}
                                                 </span> 
                                                 <p class="name"> {{ list.name }} </p>
                                             </button>

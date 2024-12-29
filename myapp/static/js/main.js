@@ -45,32 +45,28 @@ const imgProfile = (event) => {
 const imgArtistPreview = (event) => {
     const file = event.target.files;
 
-    let imgProfile = document.querySelector('form .preview-img');
-    let imgPreviewProfile = document.querySelector('.preview .preview-img');
+    if (file && file[0]) {
+        const imgProfileContainer = document.querySelector('form .preview-img');
+        const imgPreviewContainer = document.querySelector('.preview .preview-img');
 
-    // CHECK IF THERE IS AN ICON
-    if (imgProfile.querySelector('I')){
-        // REMOVE ICON
-        imgProfile.querySelector('I').remove();
-        imgPreviewProfile.querySelector('I').remove();
+        // DELETE PREVIOUS ELEMENTS
+        imgProfileContainer.innerHTML = '';
+        imgPreviewContainer.innerHTML = '';
 
-        // CREATE IMG ELEMENT AND ADD IT
-        const img = document.createElement('img');
-        imgProfile.innerHTML = img.outerHTML;
-        imgPreviewProfile.innerHTML = img.outerHTML;
+        // CREATE ELEMENT IMG
+        const imgProfile = document.createElement('img');
+        const imgPreviewProfile = document.createElement('img');
 
-        // GET ELEMENT IMG
-        imgProfile = document.querySelector('form .preview-img img');
-        imgPreviewProfile = document.querySelector('.preview .preview-img img');
-    }
+        // ADD IMGS
+        imgProfileContainer.appendChild(imgProfile);
+        imgPreviewContainer.appendChild(imgPreviewProfile);
 
-    // LOAD IMG ON DOM 
-    if (file) {
+        // READ FILES AND ADD SRC
         const fileReader = new FileReader();
         fileReader.onload = e => {
             imgProfile.src = e.target.result;
             imgPreviewProfile.src = e.target.result;
-        }
+        };
         fileReader.readAsDataURL(file[0]);
     }
 }

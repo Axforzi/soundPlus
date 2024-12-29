@@ -43,12 +43,54 @@
         border-radius: 100%;
         width: auto;
         z-index: 10;
+        transition: opacity 1s ease;
+    }
+    .cover-img{
+        transition: opacity 1s ease;
     }
 
     .icon-user{
         opacity: 0;
     }
+
+    /* LAZY CONFIG  */
+    .container-profileimg{
+        aspect-ratio: 1/1;
+        height: 120px;
+        background: rgba(36, 36, 36, 0.945);
+        background: linear-gradient(110deg, rgba(36, 36, 36, 0.945), rgba(54, 54, 54, 0.945), rgba(36, 36, 36, 0.945));
+        border-radius: 100%;
+        background-size: 200% 100%;
+        animation: 1.5s waves linear infinite;
+    }
+
+    .container-profileimg:has(.lazyloaded){
+        background: none;
+        transition: background 1s ease;
+        transition-delay: 3s;
+    }
+
+    img.lazyload, img.lazyloading {
+        opacity: 0;
+    } 
+    img.lazyloaded {
+        opacity: 1;
+        background: none;
+    }
 }
+.title:has(.cover-img){
+    background: rgba(36, 36, 36, 0.945);
+    background: linear-gradient(110deg, rgba(36, 36, 36, 0.945), rgba(54, 54, 54, 0.945), rgba(36, 36, 36, 0.945));
+    border-radius: 10px;
+    background-size: 200% 100%;
+    animation: 1.5s waves linear infinite;
+}
+.title:has(.cover-img.lazyloaded){
+    background: none;
+    transition: background 1s ease;
+    transition-delay: 3s;
+}
+
 .title::before{
     content: '';
     position: absolute;
@@ -95,6 +137,8 @@
 }
 
 main .content .artist, main .content .album{
+    border-radius: 0;
+
     .btns-container{
         display: flex;
         width: 100%;
@@ -222,13 +266,34 @@ main .content .artist, main .content .album{
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                padding: 5px 0;
+                margin: 5px;
+
+                background: rgba(36, 36, 36, 0.945);
+                background: linear-gradient(110deg, rgba(36, 36, 36, 0.945), rgba(54, 54, 54, 0.945), rgba(36, 36, 36, 0.945));
+                background-size: 200% 100%;
+                border-radius: 10px;
+                animation: 1.5s waves linear infinite;
+            }
+
+            .container-img:has(.lazyloaded){
+                background: none;
+                transition: background 1s ease;
+                transition-delay: 3s;
+            }
+
+            img.lazyload, img.lazyloading {
+                opacity: 0;
+            } 
+            img.lazyloaded {
+                opacity: 1;
+                background: none;
             }
         }
         .img img{
             border-radius: 10px;
             overflow: hidden;
             height: 45px;
+            transition: opacity 1s ease;
         }
         .title-song{
             width: 50%;
@@ -440,11 +505,34 @@ main .content .artist, main .content .album{
         justify-content: center;
         padding: 10px 10px;
     
-        img{
+        .container-img, img{
             aspect-ratio: 1/1;
             border-radius: 5px;
             height: 100%;
             max-height: 170px;
+            transition: opacity 1s ease;
+        }
+
+        .container-img{
+            height: 170px;
+            background: rgba(36, 36, 36, 0.945);
+            background: linear-gradient(110deg, rgba(36, 36, 36, 0.945), rgba(54, 54, 54, 0.945), rgba(36, 36, 36, 0.945));
+            background-size: 200% 100%;
+            animation: 1.5s waves linear infinite;
+        }
+
+        .container-img:has(.lazyloaded){
+            background: none;
+            transition: background 1s ease;
+            transition-delay: 3s;
+        }
+
+        img.lazyload, img.lazyloading {
+            opacity: 0;
+        } 
+        img.lazyloaded {
+            opacity: 1;
+            background: none;
         }
     }
 }
@@ -611,6 +699,32 @@ main .content .artist, main .content .album{
     h1 > p{
         color: white;
         font-size: 900;
+    }
+
+    /* LAZY CONFIG  */
+    .container-img:has(.album-img){
+        aspect-ratio: 1/1;
+        height: 150px;
+        margin: 25px;
+        background: rgba(36, 36, 36, 0.945);
+        background: linear-gradient(110deg, rgba(36, 36, 36, 0.945), rgba(54, 54, 54, 0.945), rgba(36, 36, 36, 0.945));
+        background-size: 200% 100%;
+        animation: 1.5s waves linear infinite;
+        z-index: 10;
+
+        img{
+            padding: 0;
+            margin: 0;
+            transition: opacity 1s ease;
+        }
+    }
+
+    .container-img:has(.album-img) img.lazyload, .container-img:has(.album-img) img.lazyloading {
+        opacity: 0;
+    } 
+    .container-img:has(.album-img) img.lazyloaded {
+        opacity: 1;
+        background: none;
     }
 
     .album-img{

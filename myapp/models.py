@@ -1,4 +1,6 @@
 from django.db import models
+from django.db.models import Value, F, Case, When
+from django.db.models.functions import Concat, Substr, StrIndex
 from django.contrib.auth.models import User
 from storages.backends.s3boto3 import S3Boto3Storage
 from datetime import datetime
@@ -33,14 +35,6 @@ class Profile(models.Model):
 
     def __str__(self):
         return self.name
-    
-    @property
-    def profileImgUrl(self):
-        return f"https://{os.getenv('SUPABASE_PROJECT_URL')}/storage/v1/object/public/{os.getenv('SUPABASE_BUCKET_NAME')}/{self.profileImg.name}"
-    
-    @property
-    def coverImgUrl(self):
-        return f"https://{os.getenv('SUPABASE_PROJECT_URL')}/storage/v1/object/public/{os.getenv('SUPABASE_BUCKET_NAME')}/{self.coverImg.name}"
 
 class Artist(models.Model):
     profileImg = models.ImageField(upload_to=profileImg_directory,null=True, blank=True)
@@ -52,14 +46,6 @@ class Artist(models.Model):
     def __str__(self) -> str:
         return self.name
     
-    @property
-    def profileImgUrl(self):
-        return f"https://{os.getenv('SUPABASE_PROJECT_URL')}/storage/v1/object/public/{os.getenv('SUPABASE_BUCKET_NAME')}/{self.profileImg.name}"
-    
-    @property
-    def coverImgUrl(self):
-        return f"https://{os.getenv('SUPABASE_PROJECT_URL')}/storage/v1/object/public/{os.getenv('SUPABASE_BUCKET_NAME')}/{self.coverImg.name}"
-    
 class Album(models.Model):
     img = models.ImageField(upload_to=albums_directory, blank=True, null=True)
     artist = models.ForeignKey(Artist, on_delete=models.CASCADE, blank=True, null=True)
@@ -70,10 +56,6 @@ class Album(models.Model):
     def __str__(self) -> str:
         return self.name
     
-    @property
-    def imgUrl(self):
-        return f"https://{os.getenv('SUPABASE_PROJECT_URL')}/storage/v1/object/public/{os.getenv('SUPABASE_BUCKET_NAME')}/{self.img.name}"
-
 # MUSICS
 def music_img_directory(instance, filename):
     now = datetime.now()
@@ -86,13 +68,14 @@ def music_directory(instance, filename):
     path = 'musics/'
     name = now.strftime('%d_%m_%Y-%H_%M_%S') + filename
     return path + name
-
+    
 class Music(models.Model):
     img = models.ImageField(upload_to=music_img_directory, null=True, blank=True)
     artist = models.ForeignKey(Artist, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
     song = models.FileField(upload_to=music_directory, null=True, blank=True)
     album = models.ForeignKey(Album, on_delete=models.CASCADE, null=True, blank=True)
+    duration = models.CharField(max_length=20, null=True, blank=True)
     views = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -102,22 +85,9 @@ class Music(models.Model):
     @property
     def imgUrl(self):
         if self.img.name == '':
-            return f"https://{os.getenv('SUPABASE_PROJECT_URL')}/storage/v1/object/public/{os.getenv('SUPABASE_BUCKET_NAME')}/{self.album.img.name}"
+            return self.album.img.url
         else:
-            return f"https://{os.getenv('SUPABASE_PROJECT_URL')}/storage/v1/object/public/{os.getenv('SUPABASE_BUCKET_NAME')}/{self.img.name}"
-    
-    @property
-    def duration(self):
-        song = mutagen.File(self.song.file)
-        minutes = int(math.floor(song.info.length/60))
-        seconds = int(math.floor(song.info.length%60))
-        return f"{minutes}:{seconds:02d}"
-    
-    @property
-    def duration_seconds(self):
-        song = mutagen.File(self.song.file)
-        seconds = song.info.length
-        return '{:.1f}'.format(seconds)
+            return self.img.url
     
 class Genre(models.Model):
     name = models.CharField(max_length=100)
@@ -129,7 +99,7 @@ class Genre(models.Model):
     
 class List(models.Model):
     name = models.CharField(max_length=100)
-    profile = models.ForeignKey(Profile, on_delete=models.CASCADE)
+    profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='lists')
     musics = models.ManyToManyField(Music, through='L_musics')
     created_at = models.DateTimeField(auto_now_add=True)
     
@@ -139,7 +109,7 @@ class List(models.Model):
     @property
     def getImg(self):
         try:
-            return self.musics.all().order_by('l_musics__created_at').first().imgUrl
+            return self.musics.all().first().imgUrl
         except Exception as e: 
             return ''
     

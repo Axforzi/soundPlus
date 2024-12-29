@@ -212,12 +212,30 @@ body header .btn-menu{
         border-radius: 5px;
         background: linear-gradient(345deg, rgba(137, 208, 255, 0.76) 0%, rgba(162,45,253,1) 100%);
     }
+
     .preview-img:has(img){
-        background: none;
+        background: rgba(36, 36, 36, 0.945);
+        background: linear-gradient(110deg, rgba(36, 36, 36, 0.945), rgba(54, 54, 54, 0.945), rgba(36, 36, 36, 0.945));
+        background-size: 200% 100%;
+        animation: 1.5s waves linear infinite;
+        transition: background 1s ease;
+
         img{
             height: 40px;
             border-radius: 5px;
+            transition: opacity 1s ease;
         }
+        img.lazyload, img.lazyloading {
+            opacity: 0;
+        } 
+        img.lazyloaded {
+            opacity: 1;
+        }
+    }
+    .preview-img:has(img.lazyloaded){
+        background: none;
+        transition: background 1s ease;
+        transition-delay: 3s;
     }
 
     .list{
@@ -559,14 +577,43 @@ main .body-cards{
     }
 
     img{
+        position: relative;
         aspect-ratio: 1/1;
         height: 130px;
         border-radius: var(--radius);
+        transition: opacity 1s ease, background 1s ease;
+    }
+
+    .container-img{
+        aspect-ratio: 1/1;
+        height: 130px;
+        background: rgba(36, 36, 36, 0.945);
+        background: linear-gradient(110deg, rgba(36, 36, 36, 0.945), rgba(54, 54, 54, 0.945), rgba(36, 36, 36, 0.945));
+        border-radius: 10px;
+        background-size: 200% 100%;
+        animation: 1.5s waves linear infinite;
+    }
+    .container-img:has(.lazyloaded){
+        background: none;
+        transition: background 1s ease;
+        transition-delay: 3s;
+    }
+
+    img.lazyload, img.lazyloading {
+        opacity: 0;
+    } 
+    img.lazyloaded {
+        opacity: 1;
+        background: none;
     }
 }
 
-main .popular-artists img{
+main .popular-artists .container-img{
     border-radius: 100%;
+
+    img{
+        border-radius: 100%;
+    }
 }
 
 /* SCROLLBAR  */
@@ -654,7 +701,7 @@ main .popular-artists img{
         -webkit-box-orient: vertical; 
         overflow: hidden;
     }
-    img{
+    .container-img{
         margin-bottom: 10px;
     }
 }

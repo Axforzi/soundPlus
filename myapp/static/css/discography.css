@@ -53,6 +53,32 @@
                 color: rgba(255, 255, 255, 0.76);
             }
         }
+
+        .container-cover{
+            display: flex;
+            align-items: center;
+            aspect-ratio: 1/1;
+            background: rgba(36, 36, 36, 0.945);
+            background: linear-gradient(110deg, rgba(36, 36, 36, 0.945), rgba(54, 54, 54, 0.945), rgba(36, 36, 36, 0.945));
+            border-radius: 10px;
+            background-size: 200% 100%;
+            animation: 1.5s waves linear infinite;
+        }
+        .container-cover.lazyloaded{
+            background: none;
+            transition: background 1s ease;
+            transition-delay: 3s;
+        }
+        .container-cover img{
+            transition: opacity 1s ease;
+        }
+
+        .container-cover img.lazyload, .container-cover img.lazyloading {
+            opacity: 0;
+        } 
+        .container-cover img.lazyloaded {
+            opacity: 1;
+        }
     }
 
     .discography-card:hover{

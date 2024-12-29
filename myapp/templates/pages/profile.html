@@ -11,7 +11,12 @@
                 {% if profile.profileImg == '' %}
                     <i class="fa-regular fa-user" class="profile-img"></i>
                 {% else %}
-                    <img src="{{ profile.profileImgUrl }}" alt="profile-img" class="profile-img">
+                    <div class="container-profileimg">
+                        <img data-src="{{ profile.profileImg.url }}" 
+                            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" 
+                            alt="profile-img" 
+                            class="profile-img lazyload">
+                    </div>
                 {% endif %}
                 <p class="edit-btn"> <span class="material-symbols-outlined">edit</span> 
                     Editar Foto
@@ -23,7 +28,10 @@
         {% if profile.coverImg == '' %}
             <div class="cover-img background-white"></div>
         {% else %}
-            <img class="cover-img" src="{{ profile.coverImgUrl }}" alt="">
+            <img class="cover-img lazyload" 
+                data-src="{{ profile.coverImg.url }}"
+                src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" 
+                alt="{{ profile.name }}">
         {% endif %}
     </div>
 
@@ -34,11 +42,14 @@
             <div class="body-cards">
                 {% for list in lists %}
                     <div class="card">
-                        <div class="container-card" hx-get="{% url 'view_mylist' name=list.name %}"
+                        <div class="container-card" hx-get="{% url 'view_list' id=list.id %}"
                         hx-target=".content" hx-swap="innerHTML swap:0.2s settle:0.2s" hx-push-url="true" hx-indicator=".loading.main">
-                            {% if list.getImg != '' %}
+                            {% if list.list_img != None and list.list_img != '' %}
                                 <div class="container-img">
-                                    <img src="/media/{{ list.getImg }}" alt="{{ list.name }}">
+                                    <img class="lazyload"
+                                        data-src="{{ list.list_img }}"
+                                        src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" 
+                                        alt="{{ list.name }}">
                                 </div>
                             {% else %}
                                 <div class="container-img liked-musics">
@@ -69,10 +80,10 @@
                     {% if request.user.profile_set.first.profileImg == '' %}
                         <i style="padding: 5px 6px;" class="fa-regular fa-user" class="profile-img"></i>
                     {% else %}
-                        <img src="{{ request.user.profile_set.first.profileImgUrl }}" alt="">
+                        <img src="{{ request.user.profile_set.first.profileImg.url }}" alt="">
                     {% endif %}
                     <div class="options">
-                        <button hx-get="{% url 'profile_view' id=request.user.profile_set.first.id %}" 
+                        <button hx-get="{% url 'my_profile_view' %}" 
                                 hx-target=".content"
                                 hx-swap="innerHTML swap:0.2s settle:0.2s"
                                 hx-indicator=".loading.main"

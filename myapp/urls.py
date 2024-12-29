@@ -29,7 +29,6 @@ urlpatterns = [
     
     # SEARCH
     path('search/', views.search, name='search'),
-    path('search-artists/', views.search_artist, name='search_artist'),
 
     #PLAY MUSIC
     path('play/artist/<artist_name>', views.play_artist, name='play_artist'),
@@ -53,7 +52,7 @@ urlpatterns = [
     path('new_list/', views.new_list, name='new_list'),
     path('edit_list/<id_list>', views.edit_list, name='edit_list'),
     path('add_to_list/<id_list>/music/<id_music>', views.add_to_list, name='add_to_list'),
-    path('delete_list/<name>', views.delete_list, name='delete_list'),
+    path('delete_list/<id>', views.delete_list, name='delete_list'),
 
     #MANAGEMENT
     path('management/', views.management, name='management'),

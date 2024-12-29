@@ -462,6 +462,7 @@ section{
 
             img{
                 height: 100%;
+                width: 100%;
                 border-radius: 100%;
             }
         }
@@ -703,14 +704,35 @@ section{
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                padding: 5px 0;
+                aspect-ratio: 1/1;
+                height: 45px;
+                margin: 5px 0;
+
+                background: rgba(36, 36, 36, 0.945);
+                background: linear-gradient(110deg, rgba(36, 36, 36, 0.945), rgba(54, 54, 54, 0.945), rgba(36, 36, 36, 0.945));
+                border-radius: 10px;
+                background-size: 200% 100%;
+                animation: 1.5s waves linear infinite;
+            }
+            .container-img:has(.lazyloaded){
+                background: none;
+                transition: background 1s ease;
+                transition-delay: 3s;
             }
         }
         .img img{
             border-radius: 10px;
             overflow: hidden;
             height: 45px;
+            transition: opacity 1s ease;
         }
+        .img img.lazyload, .img img.lazyloading{
+            opacity: 0;
+        }
+        .img img.lazyloaded{
+            opacity: 1;
+        }
+
         .title-song{
             width: 50%;
     

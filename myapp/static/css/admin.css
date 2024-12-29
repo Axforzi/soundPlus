@@ -166,6 +166,7 @@ form{
         flex-direction: column;
         position: absolute;
         top: 75%;
+        max-height: 200px;
         padding-top: 15px;
         left: 0;
         background: rgb(189, 189, 189);
@@ -179,7 +180,6 @@ form{
         transition: .2s all ease;
     }
     .select-show > div{
-        max-height: 200px;
         overflow-y: auto;
         opacity: 1;
         pointer-events: unset;
@@ -314,6 +314,12 @@ form.htmx-added{
     }
 }
 
+@keyframes waves {
+    to{ 
+        background-position-x: -200%;
+    }
+}
+
 table{
     width: 100%;
 
@@ -325,9 +331,31 @@ table{
         padding: 5px 3px;
     }
 
+    .container-img{
+        aspect-ratio: 1/1;
+        height: 50px;
+        background: rgba(36, 36, 36, 0.945);
+        background: linear-gradient(110deg, rgba(36, 36, 36, 0.945), rgba(54, 54, 54, 0.945), rgba(36, 36, 36, 0.945));
+        background-size: 200% 100%;
+        animation: 1.5s waves linear infinite;
+        transition: background 1s ease;
+    }
+    .container-img:has(img.lazyloaded){
+        background: none;
+        transition: background 1s ease;
+        transition-delay: 3s;
+    }
     img{
         height: 50px;
+        transition: opacity 1s ease;
     }
+    img.lazyload, img.lazyloading{
+        opacity: 0;
+    }
+    img.lazyloaded{
+        opacity: 1;
+    }
+
     .container-btn{
         display: flex;
         flex-direction: column;

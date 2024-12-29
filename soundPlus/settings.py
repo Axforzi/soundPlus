@@ -10,9 +10,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG')
+DEBUG = True if str(os.getenv('DEBUG')) == 'True' else False
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '*']
+ALLOWED_HOSTS = ['*']
 CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS').split(',')
 
 # Application definition
@@ -26,11 +26,13 @@ INSTALLED_APPS = [
     'django_htmx',
     'template_partials',
     'django_cleanup.apps.CleanupConfig',
+    "debug_toolbar",
     'myapp'
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -84,11 +86,11 @@ STORAGES = {
     "default": {
         "BACKEND": "storages.backends.s3.S3Storage",
         "OPTIONS": {
-            "access_key": os.getenv('SUPABASE_ACCESS_KEY_ID'), 
-            "secret_key": os.getenv('SUPABASE_SECRET_ACCESS_KEY'),
-            "bucket_name": os.getenv('SUPABASE_BUCKET_NAME'), 
-            "region_name": os.getenv('SUPABASE_REGION_NAME'),
-            "endpoint_url": os.getenv('SUPABASE_ENDPOINT_URL'),
+            "access_key": os.getenv("ACCESS_KEY_ID"), 
+            "secret_key": os.getenv("SECRET_ACCESS_KEY"),
+            "bucket_name": os.getenv("BUCKET_NAME"), 
+            "region_name": os.getenv("REGION_NAME"),
+            # "endpoint_url": os.getenv('SUPABASE_ENDPOINT_URL'),
         },
     },
 }
@@ -134,3 +136,9 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'myapp','media')
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+INTERNAL_IPS = [
+    # ...
+    "127.0.0.1",
+    # ...
+]
