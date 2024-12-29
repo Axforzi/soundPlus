@@ -515,8 +515,8 @@ def album_view(request, artist_name, album_name):
         
         
 def single_view(request, artist_name, single_name):
-    profile = request.user.profile_set.prefetch_related('lists').first()
-    liked_musics = Liked_musics.objects.filter(profile=profile, musics=OuterRef('pk'))
+    profile = request.user.profile_set.prefetch_related('lists').first() if request.user.is_authenticated else None
+    liked_musics = Liked_musics.objects.filter(profile=profile, musics=OuterRef('pk')) if profile else None
     context = {}
     
     try:
@@ -636,8 +636,8 @@ def section_view(request, section):
         
     
 def play_album(request, id):
-    profile = request.user.profile_set.prefetch_related('lists').first()
-    list_objects = profile.lists.all()
+    profile = request.user.profile_set.prefetch_related('lists').first() if request.user.is_authenticated else None
+    list_objects = profile.lists.all() if profile else None
     liked_musics = Liked_musics.objects.filter(profile=profile, musics=OuterRef('pk'))
     context = {}
     
@@ -689,8 +689,8 @@ def play_album(request, id):
         return render(request, 'modal.html#tableSongs', context)
 
 def play_artist(request, artist_name):
-    profile = request.user.profile_set.prefetch_related('lists').first()
-    list_objects = profile.lists.all()
+    profile = request.user.profile_set.prefetch_related('lists').first() if request.user.is_authenticated else None
+    list_objects = profile.lists.all() if profile else None
     liked_musics = Liked_musics.objects.filter(profile=profile, musics=OuterRef('pk'))
     context = {}
     
@@ -737,8 +737,8 @@ def play_artist(request, artist_name):
         return render(request, 'modal.html#tableSongs', context)
     
 def play_music(request, id):
-    profile = request.user.profile_set.prefetch_related('lists').first()
-    list_objects = profile.lists.all()
+    profile = request.user.profile_set.prefetch_related('lists').first() if request.user.is_authenticated else None
+    list_objects = profile.lists.all() if profile else None
     liked_musics = Liked_musics.objects.filter(profile=profile, musics=OuterRef('pk'))
     context = {}
     
@@ -787,8 +787,8 @@ def play_music(request, id):
         return render(request, 'modal.html#tableSongs', context)
     
 def play_music_on_album(request, id):
-    profile = request.user.profile_set.prefetch_related('lists').first()
-    list_objects = profile.lists.all()
+    profile = request.user.profile_set.prefetch_related('lists').first() if request.user.is_authenticated else None
+    list_objects = profile.lists.all() if profile else None
     liked_musics = Liked_musics.objects.filter(profile=profile, musics=OuterRef('pk'))
     context = {}
     
@@ -853,8 +853,8 @@ def play_music_on_album(request, id):
         return render(request, 'modal.html#tableSongs', context)
 
 def play_liked_musics(request):
-    profile = request.user.profile_set.prefetch_related('lists').first()
-    list_objects = profile.lists.all()
+    profile = request.user.profile_set.prefetch_related('lists').first() if request.user.is_authenticated else None
+    list_objects = profile.lists.all() if profile else None
     liked_musics = Liked_musics.objects.filter(profile=profile, musics=OuterRef('pk'))
     context = {}
     
@@ -903,8 +903,8 @@ def play_liked_musics(request):
     return render(request, 'modal.html#tableSongs', context)
 
 def play_liked_music(request, id):
-    profile = request.user.profile_set.prefetch_related('lists').first()
-    list_objects = profile.lists.all()
+    profile = request.user.profile_set.prefetch_related('lists').first() if request.user.is_authenticated else None
+    list_objects = profile.lists.all() if profile else None
     liked_musics = Liked_musics.objects.filter(profile=profile, musics=OuterRef('pk'))
     context = {}
     
@@ -944,8 +944,8 @@ def play_liked_music(request, id):
     return render(request, 'modal.html#tableSongs', context)
 
 def play_list(request, id):
-    profile = request.user.profile_set.prefetch_related('lists').first()
-    list_objects = profile.lists.all()
+    profile = request.user.profile_set.prefetch_related('lists').first() if request.user.is_authenticated else None
+    list_objects = profile.lists.all() if profile else None
     liked_musics = Liked_musics.objects.filter(profile=profile, musics=OuterRef('pk'))
     context = {}
     
@@ -993,8 +993,8 @@ def play_list(request, id):
     return render(request, 'modal.html#tableSongs', context)
     
 def play_music_on_list(request, id_list, id_music):
-    profile = request.user.profile_set.prefetch_related('lists').first()
-    list_objects = profile.lists.all()
+    profile = request.user.profile_set.prefetch_related('lists').first() if request.user.is_authenticated else None
+    list_objects = profile.lists.all() if profile else None
     liked_musics = Liked_musics.objects.filter(profile=profile, musics=OuterRef('pk'))
     context = {}
     
