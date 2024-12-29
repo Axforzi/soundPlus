@@ -391,7 +391,8 @@ def artist_account_save(request):
             return render(request, "pages/artist-account.html#profile", context)
 
 def artist_view(request, artist_name):
-    profile = request.user.profile_set.prefetch_related('lists').first()
+    profile = request.user.profile_set.prefetch_related('lists').first() if request.user.is_authenticated else None
+    list_objects = profile.lists.all() if profile else None
     context = {}
     
     # GET DATA
@@ -417,8 +418,7 @@ def artist_view(request, artist_name):
         for obj in artist_ep_singles:
             if obj['img'] is not None:
                 obj['img'] = default_storage.url(obj['img'])
-        
-        list_objects = profile.lists.all()
+                
         context.update({
                 'artist': artist,
                 'artist_music': artist_music,
@@ -460,7 +460,8 @@ def artist_view(request, artist_name):
         return render(request, "pages/artist.html", context)
     
 def album_view(request, artist_name, album_name):
-    profile = request.user.profile_set.prefetch_related('lists').first()
+    profile = request.user.profile_set.prefetch_related('lists').first() if request.user.is_authenticated else None
+    list_objects = profile.lists.all() if profile else None
     context = {}
     
     # GET DATA OR ERROR
@@ -476,7 +477,6 @@ def album_view(request, artist_name, album_name):
                   )
                   .all().order_by('-views'))
         
-        list_objects = profile.lists.all()
         context.update({ 
             'artist': artist, 
             'album': album,
